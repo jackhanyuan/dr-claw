@@ -206,8 +206,8 @@
     "startSession": "启动新的 Claude 会话",
     "resumeSession": "恢复会话：{{displayName}}...",
     "runCommand": "在 {{projectName}} 中运行 {{command}}",
-    "startCli": "在 {{projectName}} 中启动 Claude CLI",
-    "defaultCommand": "命令"
+    "openTerminal": "在 {{projectName}} 中打开终端",
+    "startCli": "在 {{projectName}} 中启动 Claude CLI"
   },
   "projectSelection": {
     "startChatWithProvider": "选择一个项目以开始与 {{provider}} 聊天"

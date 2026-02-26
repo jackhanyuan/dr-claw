@@ -1431,12 +1431,18 @@ function handleShellConnection(ws) {
                     // Prepare the shell command adapted to the platform and provider
                     let shellCommand;
                     if (isPlainShell) {
-                        // Plain shell mode - just run the initial command in the project directory
+                        // Plain shell mode - run the initial command or launch interactive shell
                         const shellInitialCommand = normalizedInitialCommand || initialCommand;
-                        if (os.platform() === 'win32') {
-                            shellCommand = `Set-Location -Path "${projectPath}"; ${shellInitialCommand}`;
+                        if (shellInitialCommand) {
+                            // Has a command to run - wrap it in bash -c / powershell
+                            if (os.platform() === 'win32') {
+                                shellCommand = `Set-Location -Path "${projectPath}"; ${shellInitialCommand}`;
+                            } else {
+                                shellCommand = `cd "${projectPath}" && ${shellInitialCommand}`;
+                            }
                         } else {
-                            shellCommand = `cd "${projectPath}" && ${shellInitialCommand}`;
+                            // No command - launch interactive shell directly (handled in spawn below)
+                            shellCommand = null;
                         }
                     } else if (provider === 'cursor') {
                         const cursorCommand = resolveCursorCliCommand();
@@ -1502,20 +1508,35 @@ function handleShellConnection(ws) {
 
                     console.log('🔧 Executing shell command:', shellCommand);
 
-                    // Use appropriate shell based on platform
-                    const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash';
-                    const shellArgs = os.platform() === 'win32' ? ['-Command', shellCommand] : ['-c', shellCommand];
+                    // Determine shell, args, and cwd based on command mode
+                    let spawnShell, spawnArgs, spawnCwd;
+                    if (shellCommand === null) {
+                        // Interactive shell mode - launch user's default shell directly
+                        if (os.platform() === 'win32') {
+                            spawnShell = 'powershell.exe';
+                            spawnArgs = [];
+                        } else {
+                            spawnShell = process.env.SHELL || '/bin/bash';
+                            spawnArgs = ['--login'];
+                        }
+                        spawnCwd = projectPath;
+                    } else {
+                        // Command mode - run via shell -c
+                        spawnShell = os.platform() === 'win32' ? 'powershell.exe' : 'bash';
+                        spawnArgs = os.platform() === 'win32' ? ['-Command', shellCommand] : ['-c', shellCommand];
+                        spawnCwd = os.homedir();
+                    }
 
                     // Use terminal dimensions from client if provided, otherwise use defaults
                     const termCols = data.cols || 80;
                     const termRows = data.rows || 24;
                     console.log('📐 Using terminal dimensions:', termCols, 'x', termRows);
 
-                    shellProcess = pty.spawn(shell, shellArgs, {
+                    shellProcess = pty.spawn(spawnShell, spawnArgs, {
                         name: 'xterm-256color',
                         cols: termCols,
                         rows: termRows,
-                        cwd: os.homedir(),
+                        cwd: spawnCwd,
                         env: {
                             ...process.env,
                             TERM: 'xterm-256color',

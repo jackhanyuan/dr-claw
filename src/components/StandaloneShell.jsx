@@ -34,7 +34,8 @@ function StandaloneShell({
 }) {
   const [isCompleted, setIsCompleted] = useState(false);
 
-  const shouldUsePlainShell = isPlainShell !== null ? isPlainShell : (command !== null);
+  // Default to plain shell (interactive terminal) when no command and no session
+  const shouldUsePlainShell = isPlainShell !== null ? isPlainShell : (command !== null || session === null);
 
   const handleProcessComplete = useCallback((exitCode) => {
     setIsCompleted(true);

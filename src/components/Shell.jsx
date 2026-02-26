@@ -671,7 +671,9 @@ function Shell({ selectedProject, selectedSession, initialCommand, isPlainShell 
               </button>
               <p className="text-gray-400 text-sm mt-3 px-2">
                 {isPlainShell ?
-                  t('shell.runCommand', { command: initialCommand || t('shell.defaultCommand'), projectName: selectedProject.displayName }) :
+                  (initialCommand ?
+                    t('shell.runCommand', { command: initialCommand, projectName: selectedProject.displayName }) :
+                    t('shell.openTerminal', { projectName: selectedProject.displayName })) :
                   selectedSession ?
                     t('shell.resumeSession', { displayName: sessionDisplayNameLong }) :
                     t('shell.startSession')
@@ -690,7 +692,9 @@ function Shell({ selectedProject, selectedSession, initialCommand, isPlainShell 
               </div>
               <p className="text-gray-400 text-sm mt-3 px-2">
                 {isPlainShell ?
-                  t('shell.runCommand', { command: initialCommand || t('shell.defaultCommand'), projectName: selectedProject.displayName }) :
+                  (initialCommand ?
+                    t('shell.runCommand', { command: initialCommand, projectName: selectedProject.displayName }) :
+                    t('shell.openTerminal', { projectName: selectedProject.displayName })) :
                   t('shell.startCli', { projectName: selectedProject.displayName })
                 }
               </p>

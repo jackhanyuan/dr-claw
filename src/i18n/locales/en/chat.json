@@ -206,8 +206,8 @@
     "startSession": "Start a new Claude session",
     "resumeSession": "Resume session: {{displayName}}...",
     "runCommand": "Run {{command}} in {{projectName}}",
-    "startCli": "Starting Claude CLI in {{projectName}}",
-    "defaultCommand": "command"
+    "openTerminal": "Open terminal in {{projectName}}",
+    "startCli": "Starting Claude CLI in {{projectName}}"
   },
   "projectSelection": {
     "startChatWithProvider": "Select a project to start chatting with {{provider}}"
