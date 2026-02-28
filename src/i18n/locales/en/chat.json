@@ -107,6 +107,7 @@
     "disabled": "Input disabled",
     "attachFiles": "Attach files",
     "attachImages": "Attach images",
+    "dropFilesHere": "Drop files here",
     "send": "Send",
     "stop": "Stop",
     "hintText": {
@@ -231,8 +232,12 @@
       "inProgress": "In Progress",
       "pending": "Pending",
       "expand": "Expand task progress",
-      "collapse": "Collapse task progress"
-    }
+      "collapse": "Collapse task progress",
+      "noTasks": "No tasks yet. Start by chatting with the Agent.",
+      "emptyTitle": "Task progress unavailable",
+      "emptyHint": "Talk to the Agent to generate and configure a research pipeline."
+    },
+    "loading": "Loading tasks..."
   },
   "skillShortcuts": {
     "title": "Skill Shortcuts",

@@ -155,15 +155,28 @@ const MessageComponent = memo(({ message, index, prevMessage, createDiff, onFile
             </div>
             {message.images && message.images.length > 0 && (
               <div className="mt-2 grid grid-cols-2 gap-2">
-                {message.images.map((img, idx) => (
-                  <img
-                    key={img.name || idx}
-                    src={img.data}
-                    alt={img.name}
-                    className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => window.open(img.data, '_blank')}
-                  />
-                ))}
+                {message.images.map((img, idx) => {
+                  const isImage = img.mimeType ? img.mimeType.startsWith('image/') : (img.data && img.data.startsWith('data:image/'));
+                  if (isImage) {
+                    return (
+                      <img
+                        key={img.name || idx}
+                        src={img.data}
+                        alt={img.name}
+                        className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => window.open(img.data, '_blank')}
+                      />
+                    );
+                  }
+                  return (
+                    <div key={img.name || idx} className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
+                      <svg className="w-4 h-4 flex-shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-sm truncate">{img.name || 'file'}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

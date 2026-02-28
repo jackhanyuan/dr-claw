@@ -1849,20 +1849,10 @@ app.post('/api/projects/:projectName/upload-images', authenticateToken, async (r
             }
         });
 
-        const fileFilter = (req, file, cb) => {
-            const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
-            if (allowedMimes.includes(file.mimetype)) {
-                cb(null, true);
-            } else {
-                cb(new Error('Invalid file type. Only JPEG, PNG, GIF, WebP, and SVG are allowed.'));
-            }
-        };
-
         const upload = multer({
             storage,
-            fileFilter,
             limits: {
-                fileSize: 5 * 1024 * 1024, // 5MB
+                fileSize: 10 * 1024 * 1024, // 10MB
                 files: 5
             }
         });
@@ -1874,7 +1864,7 @@ app.post('/api/projects/:projectName/upload-images', authenticateToken, async (r
             }
 
             if (!req.files || req.files.length === 0) {
-                return res.status(400).json({ error: 'No image files provided' });
+                return res.status(400).json({ error: 'No files provided' });
             }
 
             try {

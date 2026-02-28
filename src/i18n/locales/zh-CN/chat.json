@@ -107,6 +107,7 @@
     "disabled": "输入已禁用",
     "attachFiles": "附加文件",
     "attachImages": "附加图片",
+    "dropFilesHere": "拖放文件到此处",
     "send": "发送",
     "stop": "停止",
     "hintText": {
@@ -231,8 +232,12 @@
       "inProgress": "进行中",
       "pending": "待处理",
       "expand": "展开任务进度",
-      "collapse": "收起任务进度"
-    }
+      "collapse": "收起任务进度",
+      "noTasks": "暂无任务。请先与 Agent 对话。",
+      "emptyTitle": "任务进度不可用",
+      "emptyHint": "与 Agent 对话以生成和配置研究流水线。"
+    },
+    "loading": "正在加载任务..."
   },
   "skillShortcuts": {
     "title": "技能快捷方式",

@@ -17,7 +17,7 @@ const LoginForm = () => {
     setError('');
 
     if (!username || !password) {
-      setError(t('errors.requiredFields'));
+      setError(t('login.errors.requiredFields'));
       return;
     }
 

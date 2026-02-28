@@ -63,7 +63,7 @@ function ThinkingModeSelector({ selectedMode, onModeChange, onClose, className =
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-full right-0 mb-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="absolute bottom-full right-0 mb-2 w-64 max-h-[min(400px,70vh)] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-y-auto">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">

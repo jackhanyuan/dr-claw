@@ -268,38 +268,28 @@ function transformMessage(sdkMessage) {
 }
 
 /**
- * Extracts token usage from SDK result messages
- * @param {Object} resultMessage - SDK result message
+ * Extracts token budget from the last assistant message's usage data.
+ * This gives us per-API-call input tokens, which represents the actual
+ * context window fill level (not cumulative across the agentic turn).
+ * @param {Object|null} usage - usage object from assistant message (message.usage)
  * @returns {Object|null} Token budget object or null
  */
-function extractTokenBudget(resultMessage) {
-  if (resultMessage.type !== 'result' || !resultMessage.modelUsage) {
+function extractTokenBudgetFromUsage(usage) {
+  if (!usage) {
     return null;
   }
 
-  // Get the first model's usage data
-  const modelKey = Object.keys(resultMessage.modelUsage)[0];
-  const modelData = resultMessage.modelUsage[modelKey];
+  // In Claude API: input_tokens is the non-cached portion.
+  // Total context = input_tokens + cache_read_input_tokens + cache_creation_input_tokens
+  const inputTokens = usage.input_tokens || 0;
+  const cacheReadTokens = usage.cache_read_input_tokens || 0;
+  const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
+  const totalUsed = inputTokens + cacheReadTokens + cacheCreationTokens;
 
-  if (!modelData) {
-    return null;
-  }
+  // Context window is the model's input limit
+  const contextWindow = parseInt(process.env.CONTEXT_WINDOW) || 200000;
 
-  // Use cumulative tokens if available (tracks total for the session)
-  // Otherwise fall back to per-request tokens
-  const inputTokens = modelData.cumulativeInputTokens || modelData.inputTokens || 0;
-  const outputTokens = modelData.cumulativeOutputTokens || modelData.outputTokens || 0;
-  const cacheReadTokens = modelData.cumulativeCacheReadInputTokens || modelData.cacheReadInputTokens || 0;
-  const cacheCreationTokens = modelData.cumulativeCacheCreationInputTokens || modelData.cacheCreationInputTokens || 0;
-
-  // Total used = input + output + cache tokens
-  const totalUsed = inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens;
-
-  // Use configured context window budget from environment (default 160000)
-  // This is the user's budget limit, not the model's context window
-  const contextWindow = parseInt(process.env.CONTEXT_WINDOW) || 160000;
-
-  console.log(`Token calculation: input=${inputTokens}, output=${outputTokens}, cache=${cacheReadTokens + cacheCreationTokens}, total=${totalUsed}/${contextWindow}`);
+  console.log(`Token calculation: input=${inputTokens}, cacheRead=${cacheReadTokens}, cacheCreation=${cacheCreationTokens}, total=${totalUsed}/${contextWindow}`);
 
   return {
     used: totalUsed,
@@ -338,9 +328,10 @@ async function handleImages(command, images, cwd) {
         continue;
       }
 
-      const [, mimeType, base64Data] = matches;
-      const extension = mimeType.split('/')[1] || 'png';
-      const filename = `image_${index}.${extension}`;
+      const [, , base64Data] = matches;
+      // Prefer original filename if available, fallback to index-based name
+      const originalName = image.name ? image.name.replace(/[^a-zA-Z0-9._-]/g, '_') : null;
+      const filename = originalName || `file_${index}`;
       const filepath = path.join(tempDir, filename);
 
       // Write base64 data to file
@@ -351,7 +342,7 @@ async function handleImages(command, images, cwd) {
     // Include the full image paths in the prompt
     let modifiedCommand = command;
     if (tempImagePaths.length > 0 && command && command.trim()) {
-      const imageNote = `\n\n[Images provided at the following paths:]\n${tempImagePaths.map((p, i) => `${i + 1}. ${p}`).join('\n')}`;
+      const imageNote = `\n\n[Files provided at the following paths:]\n${tempImagePaths.map((p, i) => `${i + 1}. ${p}`).join('\n')}`;
       modifiedCommand = command + imageNote;
     }
 
@@ -612,6 +603,8 @@ async function queryClaudeSDK(command, options = {}, ws) {
     }
 
     // Process streaming messages
+    // Track the latest assistant message's usage to get per-API-call context window usage
+    let lastAssistantUsage = null;
     console.log('Starting async generator loop for session:', capturedSessionId || 'NEW');
     for await (const message of queryInstance) {
       // Capture session ID from first message
@@ -639,6 +632,11 @@ async function queryClaudeSDK(command, options = {}, ws) {
         console.log('No session_id in message or already captured. message.session_id:', message.session_id, 'capturedSessionId:', capturedSessionId);
       }
 
+      // Track usage from assistant messages (per-API-call, not cumulative)
+      if (message.type === 'assistant' && message.message?.usage) {
+        lastAssistantUsage = message.message.usage;
+      }
+
       // Transform and send message to WebSocket
       const transformedMessage = transformMessage(message);
       ws.send({
@@ -647,11 +645,11 @@ async function queryClaudeSDK(command, options = {}, ws) {
         sessionId: capturedSessionId || sessionId || null
       });
 
-      // Extract and send token budget updates from result messages
+      // Send token budget update when the turn completes
       if (message.type === 'result') {
-        const tokenBudget = extractTokenBudget(message);
+        const tokenBudget = extractTokenBudgetFromUsage(lastAssistantUsage);
         if (tokenBudget) {
-          console.log('Token budget from modelUsage:', tokenBudget);
+          console.log('Token budget from last assistant usage:', tokenBudget);
           ws.send({
             type: 'token-budget',
             data: tokenBudget,

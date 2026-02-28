@@ -414,15 +414,11 @@ export function useChatComposerState({
           return false;
         }
 
-        if (!file.type || !file.type.startsWith('image/')) {
-          return false;
-        }
-
-        if (!file.size || file.size > 5 * 1024 * 1024) {
+        if (!file.size || file.size > 10 * 1024 * 1024) {
           const fileName = file.name || 'Unknown file';
           setImageErrors((previous) => {
             const next = new Map(previous);
-            next.set(fileName, 'File too large (max 5MB)');
+            next.set(fileName, 'File too large (max 10MB)');
             return next;
           });
           return false;
@@ -445,7 +441,7 @@ export function useChatComposerState({
       const items = Array.from(event.clipboardData.items);
 
       items.forEach((item) => {
-        if (!item.type.startsWith('image/')) {
+        if (item.kind !== 'file') {
           return;
         }
         const file = item.getAsFile();
@@ -456,9 +452,8 @@ export function useChatComposerState({
 
       if (items.length === 0 && event.clipboardData.files.length > 0) {
         const files = Array.from(event.clipboardData.files);
-        const imageFiles = files.filter((file) => file.type.startsWith('image/'));
-        if (imageFiles.length > 0) {
-          handleImageFiles(imageFiles);
+        if (files.length > 0) {
+          handleImageFiles(files);
         }
       }
     },
@@ -467,10 +462,7 @@ export function useChatComposerState({
 
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
-    accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'],
-    },
-    maxSize: 5 * 1024 * 1024,
+    maxSize: 10 * 1024 * 1024,
     maxFiles: 5,
     onDrop: handleImageFiles,
     noClick: true,

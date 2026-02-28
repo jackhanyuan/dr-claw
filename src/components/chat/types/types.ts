@@ -7,6 +7,7 @@ export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | '
 export interface ChatImage {
   data: string;
   name: string;
+  mimeType?: string;
 }
 
 export interface ToolResult {
