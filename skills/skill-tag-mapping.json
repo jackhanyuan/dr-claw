@@ -15,6 +15,7 @@
     "inno-reference-audit": { "zh": "阶段: 论文评审", "en": "Stage: Paper Review", "ko": "단계: 논문 심사" },
     "inno-humanizer": { "zh": "阶段: 论文撰写", "en": "Stage: Paper Writing", "ko": "단계: 논문 작성" },
     "inno-rclone-to-overleaf": { "zh": "阶段: 发布同步", "en": "Stage: Publication Sync", "ko": "단계: 배포 동기화" },
+    "making-academic-presentations": { "zh": "阶段: 成果推广", "en": "Stage: Promotion", "ko": "단계: 성과 홍보" },
     "inno-figure-gen": { "zh": "阶段: 论文撰写", "en": "Stage: Paper Writing", "ko": "단계: 논문 작성" },
     "bioinformatics-init-analysis": { "zh": "阶段: 实验分析", "en": "Stage: Analysis", "ko": "단계: 분석" },
     "biorxiv-database": { "zh": "阶段: 资源准备", "en": "Stage: Resource Prep", "ko": "단계: 리소스 준비" },

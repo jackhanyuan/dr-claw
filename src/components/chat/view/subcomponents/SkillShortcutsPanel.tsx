@@ -21,6 +21,7 @@ const CATEGORIES: SkillCategory[] = [
   { key: 'paperWriting', icon: '✏️', skills: ['inno-paper-writing', 'scientific-writing', 'ml-paper-writing', 'inno-figure-gen', 'inno-humanizer'] },
   { key: 'paperReview', icon: '📋', skills: ['inno-paper-reviewer', 'inno-reference-audit', 'inno-rclone-to-overleaf'] },
   { key: 'grantWriting', icon: '📝', skills: ['research-grants'] },
+  { key: 'promotion', icon: '🎬', skills: ['making-academic-presentations'] },
 ];
 
 export default function SkillShortcutsPanel({

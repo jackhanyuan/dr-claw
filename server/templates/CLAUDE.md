@@ -59,7 +59,7 @@ When the user sends you a task from the Pipeline Task List, treat it as your cur
 
 ## Pipeline Stages
 
-The pipeline has three stages. Users do not have to start from Ideation — they can enter the pipeline at any stage depending on what they already have.
+The pipeline has four stages. Users do not have to start from Ideation — they can enter the pipeline at any stage depending on what they already have.
 
 **Ideation** — Define research directions, generate and evaluate ideas, establish problem framing and success criteria.
 Output directories: `Ideation/ideas/`, `Ideation/references/`
@@ -71,8 +71,13 @@ Output directories: `Experiment/code_references/`, `Experiment/datasets/`, `Expe
 *Pre-existing input accepted*: Research idea/hypothesis, method description, dataset references.
 
 **Publication** — Write the paper, prepare figures/tables, finalize submission artifacts.
-Output directories: `Publication/paper/`, `Publication/homepage/`, `Publication/slide/`
+Output directories: `Publication/paper/`
 *Pre-existing input accepted*: Experimental results, analysis, figures, code artifacts.
+
+**Promotion** — Create homepage assets, slide decks, narration scripts, TTS audio, and demo videos from research outcomes.
+Output directories: `Promotion/homepage/`, `Promotion/slides/`, `Promotion/audio/`, `Promotion/video/`
+*Skip if*: User does not need promotion assets or demo videos.
+*Pre-existing input accepted*: Paper figures, existing slides/PPTX, narration scripts.
 
 The `pipeline.startStage` field in `research_brief.json` controls which stage the pipeline begins from. Tasks are only generated for the starting stage and all subsequent stages.
 
@@ -88,7 +93,7 @@ If no suggested skills appear in the prompt, or the user makes a freeform reques
 
 ## Key Files
 
-- `instance.json` — Project path mapping. It stores absolute directory paths for each pipeline area (`Ideation.*`, `Experiment.*`, `Publication.*`) and related project metadata. Use these paths as the canonical locations for file I/O.
+- `instance.json` — Project path mapping. It stores absolute directory paths for each pipeline area (`Ideation.*`, `Experiment.*`, `Publication.*`, `Promotion.*`) and related project metadata. Use these paths as the canonical locations for file I/O.
 - `.pipeline/docs/research_brief.json` — Research process control document and single source of truth. It defines stage goals, required elements, quality gates, task blueprints, recommended skills, and `pipeline.startStage` (which stage to begin from). Should be updated as the work evolves.
 - `.pipeline/tasks/tasks.json` — The task list generated from the research brief. Each task has: `id`, `title`, `description`, `status` (pending, in-progress, done, review, deferred, cancelled), `stage`, `priority`, `dependencies`, `taskType`, `inputsNeeded`, `suggestedSkills`, and `nextActionPrompt`. Read this to understand what needs to be done.
 - `.pipeline/config.json` — Pipeline configuration metadata.

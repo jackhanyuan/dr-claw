@@ -124,6 +124,22 @@ function classifyArtifact(name, relativePath) {
     if (name.startsWith('machine_learning')) return { stage: 'ML Development', icon: Beaker, color: 'orange' };
     return { stage: 'Experiment Analysis', icon: Beaker, color: 'teal' };
   }
+  if (
+    rp.startsWith('Promotion/')
+    || rp.startsWith('Presentation/')
+    || rp.startsWith('Publication/homepage/')
+    || rp.startsWith('Publication/slide/')
+  ) {
+    if (rp.includes('/homepage/'))
+      return { stage: 'Homepage Delivery', icon: FileText, color: 'pink' };
+    if (rp.includes('slides/') || rp.includes('/slide/') || name.endsWith('.png') || name.endsWith('.jpg'))
+      return { stage: 'Slide Generation', icon: FileText, color: 'pink' };
+    if (name.endsWith('.mp3') || name.endsWith('.wav'))
+      return { stage: 'TTS Audio', icon: FileText, color: 'pink' };
+    if (name.endsWith('.mp4'))
+      return { stage: 'Video Assembly', icon: FileText, color: 'pink' };
+    return { stage: 'Slide Generation', icon: FileText, color: 'pink' };
+  }
   if (rp.startsWith('Publication/')) {
     return { stage: 'Paper Writing', icon: PenTool, color: 'purple' };
   }
@@ -160,6 +176,7 @@ const BADGE_COLORS = {
   yellow: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
   teal: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300',
   gray: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+  pink: 'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300',
 };
 
 const IDEATION_STAGES = new Set([
@@ -181,13 +198,15 @@ const EXPERIMENT_STAGES = new Set([
 ]);
 
 const PUBLICATION_STAGES = new Set(['Paper Writing']);
+const PRESENTATION_STAGES = new Set(['Homepage Delivery', 'Slide Generation', 'TTS Audio', 'Video Assembly']);
 const DEFAULT_RESEARCH_BRIEF_FILENAME = 'research_brief.json';
 const DEFAULT_TASKS_FILENAME = 'tasks.json';
-const TASK_STAGE_ORDER = ['ideation', 'experiment', 'publication', 'unassigned'];
+const TASK_STAGE_ORDER = ['ideation', 'experiment', 'publication', 'promotion', 'unassigned'];
 const TASK_STAGE_META = {
   ideation: { label: 'Ideation', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' },
   experiment: { label: 'Experiment', className: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300' },
   publication: { label: 'Publication', className: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300' },
+  promotion: { label: 'Promotion', className: 'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300' },
   unassigned: { label: 'Unassigned', className: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
 };
 const TASK_STATUS_META = {
@@ -403,14 +422,16 @@ function TaskPipelineBoard({ tasks, isLoading, onNavigateToChat, projectName, on
     if (!Array.isArray(tasks) || tasks.length === 0) return;
     setOpenStages((prev) => {
       if (Object.keys(prev).length > 0) return prev;
-      return { ideation: true, experiment: true, publication: true, unassigned: false };
+      return { ideation: true, experiment: true, publication: true, promotion: true, unassigned: false };
     });
   }, [tasks]);
 
   const normalizedTasks = useMemo(
     () => (Array.isArray(tasks) ? tasks : []).map((task) => ({
       ...task,
-      stage: TASK_STAGE_META[task?.stage] ? task.stage : 'unassigned',
+      stage: task?.stage === 'presentation'
+        ? 'promotion'
+        : (TASK_STAGE_META[task?.stage] ? task.stage : 'unassigned'),
       status: TASK_STATUS_META[task?.status] ? task.status : 'pending',
     })),
     [tasks],
@@ -430,6 +451,7 @@ function TaskPipelineBoard({ tasks, isLoading, onNavigateToChat, projectName, on
       ideation: [],
       experiment: [],
       publication: [],
+      promotion: [],
       unassigned: [],
     };
     normalizedTasks.forEach((task) => {
@@ -704,7 +726,8 @@ function ArtifactsCard({ artifacts, onSelect, selectedPath }) {
   const stageOrder = [
     'Data Loading', 'Prepare', 'Idea Generation', 'Medical Expert', 'Engineering Expert',
     'Repo Acquisition', 'Code Survey', 'Implementation Plan',
-    'ML Development', 'Judge', 'Experiment Analysis', 'Paper Writing', 'Other'
+    'ML Development', 'Judge', 'Experiment Analysis', 'Paper Writing',
+    'Homepage Delivery', 'Slide Generation', 'TTS Audio', 'Video Assembly', 'Other'
   ];
   const sorted = stageOrder.filter(s => groups[s]).map(s => ({ stage: s, ...groups[s] }));
 
@@ -1296,6 +1319,10 @@ function ResearchLab({ selectedProject, onNavigateToChat }) {
       }
 
       const logFiles = collectFiles(tree, projectRoot, (rel) => {
+        // Promotion: collect all files under Promotion/ and legacy Presentation/.
+        if (/^(Promotion|Presentation)\//.test(rel)) return true;
+        // Legacy publication outputs that now belong to Promotion.
+        if (/^Publication\/(homepage|slide)\//.test(rel)) return true;
         if (!rel.endsWith('.json')) return false;
         // New layout: JSON files inside logs/ dirs under Ideation/ or Experiment/
         if (/^(Ideation|Experiment)\/.*\/logs\//.test(rel)) return true;

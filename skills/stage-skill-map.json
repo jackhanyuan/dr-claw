@@ -85,5 +85,24 @@
         "inno-rclone-to-overleaf"
       ]
     }
+  },
+  "promotion": {
+    "base": [
+      "making-academic-presentations"
+    ],
+    "byTaskType": {
+      "scripting": [
+        "making-academic-presentations"
+      ],
+      "rendering": [
+        "making-academic-presentations"
+      ],
+      "narration": [
+        "making-academic-presentations"
+      ],
+      "delivery": [
+        "making-academic-presentations"
+      ]
+    }
   }
 }
