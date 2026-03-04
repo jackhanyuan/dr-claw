@@ -1,6 +1,6 @@
 {
   "name": "vibelab",
-  "version": "0.1.0",
+  "version": "2026.3.0",
   "description": "Vibe Lab — Desktop and mobile UI for Claude Code, Cursor CLI and Codex with Research Lab",
   "type": "module",
   "main": "server/index.js",
