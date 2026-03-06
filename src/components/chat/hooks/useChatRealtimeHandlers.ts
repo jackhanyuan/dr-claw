@@ -814,51 +814,120 @@ export function useChatRealtimeHandlers({
         }
 
         if (codexData.type === 'item') {
+          const itemId = codexData.itemId;
+          const lifecycle = codexData.lifecycle; // 'started' | 'completed' | 'other'
+
           switch (codexData.itemType) {
             case 'agent_message':
               if (codexData.message?.content?.trim()) {
                 const content = decodeHtmlEntities(codexData.message.content);
-                setChatMessages((previous) => [
-                  ...previous,
-                  {
-                    type: 'assistant',
-                    content,
-                    timestamp: new Date(),
-                  },
-                ]);
+
+                // Server marks system prompts; also detect on frontend as fallback
+                const isSystemPrompt = codexData.isSystemPrompt ||
+                  /^#\s+(AGENTS|SKILL|INSTRUCTIONS)/m.test(content) ||
+                  content.includes('<INSTRUCTIONS>') ||
+                  content.includes('</INSTRUCTIONS>') ||
+                  /^#+\s+.*instructions\s+for\s+\//im.test(content) ||
+                  (content.includes('Base directory for this skill:') && content.length > 500) ||
+                  (content.length > 2000 && /^\d+\)\s/m.test(content) && /\bskill\b/i.test(content)) ||
+                  ((content.match(/SKILL\.md\)/g) || []).length >= 3) ||
+                  content.includes('### How to use skills') ||
+                  content.includes('## How to use skills') ||
+                  (content.includes('Trigger rules:') && content.includes('skill') && content.length > 500);
+
+                if (isSystemPrompt) {
+                  // Show as collapsed skill content
+                  setChatMessages((previous) => [
+                    ...previous,
+                    {
+                      type: 'user',
+                      content,
+                      timestamp: new Date(),
+                      isSkillContent: true,
+                    },
+                  ]);
+                } else {
+                  setChatMessages((previous) => [
+                    ...previous,
+                    {
+                      type: 'assistant',
+                      content,
+                      timestamp: new Date(),
+                    },
+                  ]);
+                }
               }
               break;
 
             case 'reasoning':
-              if (codexData.message?.content?.trim()) {
-                const content = decodeHtmlEntities(codexData.message.content);
-                setChatMessages((previous) => [
-                  ...previous,
-                  {
-                    type: 'assistant',
-                    content,
-                    timestamp: new Date(),
-                    isThinking: true,
-                  },
-                ]);
-              }
+              // Codex reasoning items are very brief status notes (e.g. "Planning API path inspection")
+              // They add noise without value - skip them entirely for Codex sessions
               break;
 
             case 'command_execution':
               if (codexData.command) {
-                setChatMessages((previous) => [
-                  ...previous,
-                  {
-                    type: 'assistant',
-                    content: '',
-                    timestamp: new Date(),
-                    isToolUse: true,
-                    toolName: 'Bash',
-                    toolInput: codexData.command,
-                    toolResult: codexData.output || null,
-                    exitCode: codexData.exitCode,
-                  },
-                ]);
+                const exitCode = codexData.exitCode;
+                const output = codexData.output;
+                // Wrap command in object format expected by Bash ToolRenderer
+                const bashToolInput = { command: codexData.command };
+
+                if (lifecycle === 'completed' && itemId) {
+                  // Update existing tool message if it was added on 'started'
+                  setChatMessages((previous) => {
+                    const existingIdx = previous.findIndex(
+                      (m) => m.codexItemId === itemId && m.isToolUse,
+                    );
+                    if (existingIdx >= 0) {
+                      const updated = [...previous];
+                      updated[existingIdx] = {
+                        ...updated[existingIdx],
+                        toolResult: output != null ? {
+                          content: output,
+                          isError: exitCode != null && exitCode !== 0,
+                        } : null,
+                        exitCode,
+                      };
+                      return updated;
+                    }
+                    // Not found, add new
+                    return [
+                      ...previous,
+                      {
+                        type: 'assistant',
+                        content: '',
+                        timestamp: new Date(),
+                        isToolUse: true,
+                        toolName: 'Bash',
+                        toolInput: bashToolInput,
+                        toolResult: output != null ? {
+                          content: output,
+                          isError: exitCode != null && exitCode !== 0,
+                        } : null,
+                        exitCode,
+                        codexItemId: itemId,
+                      },
+                    ];
+                  });
+                } else {
+                  // 'started' or no lifecycle - add new tool message
+                  setChatMessages((previous) => [
+                    ...previous,
+                    {
+                      type: 'assistant',
+                      content: '',
+                      timestamp: new Date(),
+                      isToolUse: true,
+                      toolName: 'Bash',
+                      toolInput: bashToolInput,
+                      toolResult: output != null ? {
+                        content: output,
+                        isError: exitCode != null && exitCode !== 0,
+                      } : null,
+                      exitCode,
+                      codexItemId: itemId,
+                    },
+                  ]);
+                }
               }
               break;
 
@@ -867,6 +936,97 @@ export function useChatRealtimeHandlers({
                 const changesList = codexData.changes
                   .map((change: { kind: string; path: string }) => `${change.kind}: ${change.path}`)
                   .join('\n');
+
+                if (lifecycle === 'completed' && itemId) {
+                  setChatMessages((previous) => {
+                    const existingIdx = previous.findIndex(
+                      (m) => m.codexItemId === itemId && m.isToolUse,
+                    );
+                    if (existingIdx >= 0) {
+                      const updated = [...previous];
+                      updated[existingIdx] = {
+                        ...updated[existingIdx],
+                        toolInput: changesList,
+                        toolResult: {
+                          content: `Status: ${codexData.status}`,
+                          isError: false,
+                        },
+                      };
+                      return updated;
+                    }
+                    return [
+                      ...previous,
+                      {
+                        type: 'assistant',
+                        content: '',
+                        timestamp: new Date(),
+                        isToolUse: true,
+                        toolName: 'FileChanges',
+                        toolInput: changesList,
+                        toolResult: {
+                          content: `Status: ${codexData.status}`,
+                          isError: false,
+                        },
+                        codexItemId: itemId,
+                      },
+                    ];
+                  });
+                } else {
+                  setChatMessages((previous) => [
+                    ...previous,
+                    {
+                      type: 'assistant',
+                      content: '',
+                      timestamp: new Date(),
+                      isToolUse: true,
+                      toolName: 'FileChanges',
+                      toolInput: changesList,
+                      toolResult: codexData.status ? {
+                        content: `Status: ${codexData.status}`,
+                        isError: false,
+                      } : null,
+                      codexItemId: itemId,
+                    },
+                  ]);
+                }
+              }
+              break;
+
+            case 'mcp_tool_call': {
+              const toolResult = codexData.result
+                ? { content: JSON.stringify(codexData.result, null, 2), isError: false }
+                : codexData.error?.message
+                ? { content: codexData.error.message, isError: true }
+                : null;
+
+              if (lifecycle === 'completed' && itemId) {
+                setChatMessages((previous) => {
+                  const existingIdx = previous.findIndex(
+                    (m) => m.codexItemId === itemId && m.isToolUse,
+                  );
+                  if (existingIdx >= 0) {
+                    const updated = [...previous];
+                    updated[existingIdx] = {
+                      ...updated[existingIdx],
+                      toolResult,
+                    };
+                    return updated;
+                  }
+                  return [
+                    ...previous,
+                    {
+                      type: 'assistant',
+                      content: '',
+                      timestamp: new Date(),
+                      isToolUse: true,
+                      toolName: `${codexData.server}:${codexData.tool}`,
+                      toolInput: JSON.stringify(codexData.arguments, null, 2),
+                      toolResult,
+                      codexItemId: itemId,
+                    },
+                  ];
+                });
+              } else {
                 setChatMessages((previous) => [
                   ...previous,
                   {
@@ -874,33 +1034,59 @@ export function useChatRealtimeHandlers({
                     content: '',
                     timestamp: new Date(),
                     isToolUse: true,
-                    toolName: 'FileChanges',
-                    toolInput: changesList,
-                    toolResult: {
-                      content: `Status: ${codexData.status}`,
-                      isError: false,
-                    },
+                    toolName: `${codexData.server}:${codexData.tool}`,
+                    toolInput: JSON.stringify(codexData.arguments, null, 2),
+                    toolResult,
+                    codexItemId: itemId,
                   },
                 ]);
               }
               break;
+            }
 
-            case 'mcp_tool_call':
-              setChatMessages((previous) => [
-                ...previous,
-                {
-                  type: 'assistant',
-                  content: '',
-                  timestamp: new Date(),
-                  isToolUse: true,
-                  toolName: `${codexData.server}:${codexData.tool}`,
-                  toolInput: JSON.stringify(codexData.arguments, null, 2),
-                  toolResult: codexData.result
-                    ? JSON.stringify(codexData.result, null, 2)
-                    : codexData.error?.message || null,
-                },
-              ]);
+            case 'web_search': {
+              const query = codexData.query || 'Searching...';
+              if (lifecycle === 'completed' && itemId) {
+                // Update existing or add new
+                setChatMessages((previous) => {
+                  const existingIdx = previous.findIndex(
+                    (m) => m.codexItemId === itemId && m.isToolUse,
+                  );
+                  if (existingIdx >= 0) {
+                    // Already shown from 'started', no update needed for web_search
+                    return previous;
+                  }
+                  return [
+                    ...previous,
+                    {
+                      type: 'assistant',
+                      content: '',
+                      timestamp: new Date(),
+                      isToolUse: true,
+                      toolName: 'WebSearch',
+                      toolInput: { command: query },
+                      toolResult: null,
+                      codexItemId: itemId,
+                    },
+                  ];
+                });
+              } else {
+                setChatMessages((previous) => [
+                  ...previous,
+                  {
+                    type: 'assistant',
+                    content: '',
+                    timestamp: new Date(),
+                    isToolUse: true,
+                    toolName: 'WebSearch',
+                    toolInput: { command: query },
+                    toolResult: null,
+                    codexItemId: itemId,
+                  },
+                ]);
+              }
               break;
+            }
 
             case 'error':
               if (codexData.message?.content) {

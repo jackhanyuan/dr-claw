@@ -19,9 +19,37 @@ import { Codex } from '@openai/codex-sdk';
 const activeCodexSessions = new Map();
 
 /**
+ * Check if an agent_message item contains system prompt / instruction content
+ * that should be collapsed rather than displayed as a normal message.
+ * @param {string} text - The message text
+ * @returns {boolean}
+ */
+function isSystemPromptContent(text) {
+  if (!text || text.length < 200) return false;
+  // AGENTS.md / SKILL.md / INSTRUCTIONS headers
+  if (/^#\s+(AGENTS|SKILL|INSTRUCTIONS)/m.test(text)) return true;
+  // XML instruction tags
+  if (text.includes('<INSTRUCTIONS>') || text.includes('</INSTRUCTIONS>')) return true;
+  // "instructions for /path" pattern in a heading
+  if (/^#+\s+.*instructions\s+for\s+\//im.test(text)) return true;
+  // Skill content markers
+  if (text.includes('Base directory for this skill:') && text.length > 500) return true;
+  // Long text with numbered-list instruction patterns
+  if (text.length > 2000 && /^\d+\)\s/m.test(text) && /\bskill\b/i.test(text)) return true;
+  // Repeated SKILL.md file paths (skill listing content)
+  const skillPathCount = (text.match(/SKILL\.md\)/g) || []).length;
+  if (skillPathCount >= 3) return true;
+  // "How to use skills" section
+  if (text.includes('### How to use skills') || text.includes('## How to use skills')) return true;
+  // Skill discovery/trigger rules pattern
+  if (text.includes('Trigger rules:') && text.includes('skill') && text.length > 500) return true;
+  return false;
+}
+
+/**
  * Transform Codex SDK event to WebSocket message format
  * @param {object} event - SDK event
- * @returns {object} - Transformed event for WebSocket
+ * @returns {object|null} - Transformed event for WebSocket, or null to skip
  */
 function transformCodexEvent(event) {
   // Map SDK event types to a consistent format
@@ -31,41 +59,53 @@ function transformCodexEvent(event) {
     case 'item.completed':
       const item = event.item;
       if (!item) {
-        return { type: event.type, item: null };
+        return null;
       }
 
       // Transform based on item type
       switch (item.type) {
-        case 'agent_message':
+        case 'agent_message': {
+          const text = item.text || '';
+          if (!text.trim()) return null;
+
+          // Detect and mark system prompt content
+          const isSysPrompt = isSystemPromptContent(text);
           return {
             type: 'item',
             itemType: 'agent_message',
             message: {
               role: 'assistant',
-              content: item.text
-            }
+              content: text
+            },
+            isSystemPrompt: isSysPrompt
           };
+        }
 
-        case 'reasoning':
-          return {
-            type: 'item',
-            itemType: 'reasoning',
-            message: {
-              role: 'assistant',
-              content: item.text,
-              isReasoning: true
-            }
-          };
+        case 'reasoning': {
+          // Codex reasoning items are brief status notes with no real value to display
+          // Skip them entirely to avoid "💭 Thinking..." spam in the UI
+          return null;
+        }
 
-        case 'command_execution':
+        case 'command_execution': {
+          // Codex may wrap commands in JSON: {"cmd":"...", "workdir":"...", "max_output_tokens":...}
+          // Extract just the command string for display
+          let command = item.command || '';
+          try {
+            const parsed = JSON.parse(command);
+            if (parsed.cmd) command = parsed.cmd;
+          } catch {
+            // Not JSON, use as-is
+          }
           return {
             type: 'item',
             itemType: 'command_execution',
-            command: item.command,
-            output: item.aggregated_output,
+            command,
+            output: item.aggregated_output || '',
             exitCode: item.exit_code,
             status: item.status
           };
+        }
 
         case 'file_change':
           return {
@@ -91,7 +131,7 @@ function transformCodexEvent(event) {
           return {
             type: 'item',
             itemType: 'web_search',
-            query: item.query
+            query: item.query || ''
           };
 
         case 'todo_list':
@@ -249,6 +289,9 @@ export async function queryCodex(command, options = {}, ws) {
       signal: abortController.signal
     });
 
+    // Track items we've already sent to avoid duplicates
+    const sentItems = new Map(); // itemId -> lifecycle stage
+
     for await (const event of streamedTurn.events) {
       // Check if session was aborted
       const session = activeCodexSessions.get(currentSessionId);
@@ -256,11 +299,57 @@ export async function queryCodex(command, options = {}, ws) {
         break;
       }
 
-      if (event.type === 'item.started' || event.type === 'item.updated') {
+      const itemType = event.item?.type || 'unknown';
+      const itemId = event.item?.id || null;
+
+      // Detailed debug logging
+      if (event.item) {
+        const preview = event.item.text ? event.item.text.substring(0, 80) : (event.item.command || '');
+        console.log(`[Codex] ${event.type} | ${itemType} | id=${itemId} | preview="${preview}"`);
+        // Extra logging for command_execution output
+        if (itemType === 'command_execution' && event.type === 'item.completed') {
+          const outLen = event.item.aggregated_output?.length || 0;
+          const outPreview = event.item.aggregated_output?.substring(0, 120) || '(empty)';
+          console.log(`[Codex]   cmd output (${outLen} chars): "${outPreview}"`);
+        }
+      } else {
+        console.log(`[Codex] ${event.type}`);
+      }
+
+      // Event filtering:
+      // - item.updated: always skip (streaming noise)
+      // - item.started: forward tool-type items immediately so they appear in UI
+      // - item.completed: always forward (final state with results)
+      if (event.type === 'item.updated') {
         continue;
       }
 
+      if (event.type === 'item.started') {
+        const toolTypes = new Set(['command_execution', 'file_change', 'mcp_tool_call', 'web_search']);
+        if (!toolTypes.has(itemType)) {
+          continue;
+        }
+        if (itemId) sentItems.set(itemId, 'started');
+      }
+
+      if (event.type === 'item.completed' && itemId) {
+        sentItems.set(itemId, 'completed');
+      }
+
       const transformed = transformCodexEvent(event);
+
+      // Skip null transforms (empty reasoning, etc.)
+      if (!transformed) {
+        console.log(`[Codex] Skipped null transform for ${event.type} | ${itemType}`);
+        continue;
+      }
+
+      // Add lifecycle info for frontend dedup
+      if (itemId) {
+        transformed.itemId = itemId;
+        transformed.lifecycle = event.type === 'item.started' ? 'started'
+          : event.type === 'item.completed' ? 'completed' : 'other';
+      }
 
       sendMessage(ws, {
         type: 'codex-response',

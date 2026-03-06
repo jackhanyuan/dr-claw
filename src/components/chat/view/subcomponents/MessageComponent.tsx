@@ -87,7 +87,8 @@ const MessageComponent = memo(({ message, index, prevMessage, createDiff, onFile
   }, [autoExpandTools, isExpanded, message.isToolUse]);
 
   const formattedTime = useMemo(() => new Date(message.timestamp).toLocaleTimeString(), [message.timestamp]);
-  const shouldHideThinkingMessage = Boolean(message.isThinking && !showThinking);
+  // Only hide thinking messages for Claude; Codex reasoning should always be shown (collapsed)
+  const shouldHideThinkingMessage = Boolean(message.isThinking && !showThinking && provider !== 'codex');
 
   if (shouldHideThinkingMessage) {
     return null;

@@ -69,6 +69,22 @@ export const TOOL_CONFIGS: Record<string, ToolDisplayConfig> = {
     }
   },
 
+  WebSearch: {
+    input: {
+      type: 'one-line',
+      label: 'Web Search',
+      getValue: (input) => input.command || input.query || '',
+      action: 'none',
+      colorScheme: {
+        primary: 'text-blue-500 dark:text-blue-400',
+        secondary: 'text-gray-400',
+        background: '',
+        border: 'border-blue-400 dark:border-blue-500',
+        icon: 'text-blue-500 dark:text-blue-400'
+      }
+    }
+  },
+
   // ============================================================================
   // FILE OPERATION TOOLS
   // ============================================================================

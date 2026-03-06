@@ -1933,6 +1933,24 @@ async function parseCodexSessionFile(filePath) {
   }
 }
 
+/**
+ * Detect system prompt / instruction content in Codex messages
+ * (AGENTS.md, skill listings, instruction blocks)
+ */
+function isCodexSystemPromptContent(text) {
+  if (!text || text.length < 200) return false;
+  if (/^#\s+(AGENTS|SKILL|INSTRUCTIONS)/m.test(text)) return true;
+  if (text.includes('<INSTRUCTIONS>') || text.includes('</INSTRUCTIONS>')) return true;
+  if (/^#+\s+.*instructions\s+for\s+\//im.test(text)) return true;
+  if (text.includes('Base directory for this skill:') && text.length > 500) return true;
+  if (text.length > 2000 && /^\d+\)\s/m.test(text) && /\bskill\b/i.test(text)) return true;
+  const skillPathCount = (text.match(/SKILL\.md\)/g) || []).length;
+  if (skillPathCount >= 3) return true;
+  if (text.includes('### How to use skills') || text.includes('## How to use skills')) return true;
+  if (text.includes('Trigger rules:') && text.includes('skill') && text.length > 500) return true;
+  return false;
+}
+
 // Get messages for a specific Codex session
 async function getCodexSessionMessages(sessionId, limit = null, offset = 0) {
   try {
@@ -2016,6 +2034,11 @@ async function getCodexSessionMessages(sessionId, limit = null, offset = 0) {
               continue;
             }
 
+            // Skip system prompt / instruction content (AGENTS.md, skills listing, etc.)
+            if (textContent && isCodexSystemPromptContent(textContent)) {
+              continue;
+            }
+
             // Only add if there's actual content
             if (textContent?.trim()) {
               messages.push({
@@ -2029,22 +2052,7 @@ async function getCodexSessionMessages(sessionId, limit = null, offset = 0) {
             }
           }
 
-          if (entry.type === 'response_item' && entry.payload?.type === 'reasoning') {
-            const summaryText = entry.payload.summary
-              ?.map(s => s.text)
-              .filter(Boolean)
-              .join('\n');
-            if (summaryText?.trim()) {
-              messages.push({
-                type: 'thinking',
-                timestamp: entry.timestamp,
-                message: {
-                  role: 'assistant',
-                  content: summaryText
-                }
-              });
-            }
-          }
+          // Skip Codex reasoning items - they are brief status notes, not useful to display
 
           if (entry.type === 'response_item' && entry.payload?.type === 'function_call') {
             let toolName = entry.payload.name;

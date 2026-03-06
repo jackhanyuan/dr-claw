@@ -1402,7 +1402,14 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
                       onClick={() => setSelectedAgent('claude')}
                       isMobile={true}
                     />
-                    {/* Cursor and Codex temporarily hidden — will re-add when content is ready */}
+                    {/* Cursor temporarily hidden — will re-add when content is ready */}
+                    <AgentListItem
+                      agentId="codex"
+                      authStatus={codexAuthStatus}
+                      isSelected={selectedAgent === 'codex'}
+                      onClick={() => setSelectedAgent('codex')}
+                      isMobile={true}
+                    />
                   </div>
                 </div>
 
@@ -1415,7 +1422,13 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
                       isSelected={selectedAgent === 'claude'}
                       onClick={() => setSelectedAgent('claude')}
                     />
-                    {/* Cursor and Codex temporarily hidden — will re-add when content is ready */}
+                    {/* Cursor temporarily hidden — will re-add when content is ready */}
+                    <AgentListItem
+                      agentId="codex"
+                      authStatus={codexAuthStatus}
+                      isSelected={selectedAgent === 'codex'}
+                      onClick={() => setSelectedAgent('codex')}
+                    />
                   </div>
                 </div>
 

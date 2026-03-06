@@ -40,7 +40,7 @@ const PROVIDERS: ProviderDef[] = [
     ring: 'ring-primary/15',
     check: 'bg-primary text-primary-foreground',
   },
-  // Cursor and Codex temporarily hidden — will re-add when content is ready
+  // Cursor temporarily hidden — will re-add when content is ready
   // {
   //   id: 'cursor',
   //   name: 'Cursor',
@@ -49,14 +49,14 @@ const PROVIDERS: ProviderDef[] = [
   //   ring: 'ring-violet-500/15',
   //   check: 'bg-violet-500 text-white',
   // },
-  // {
-  //   id: 'codex',
-  //   name: 'Codex',
-  //   infoKey: 'providerSelection.providerInfo.openai',
-  //   accent: 'border-emerald-600 dark:border-emerald-400',
-  //   ring: 'ring-emerald-600/15',
-  //   check: 'bg-emerald-600 dark:bg-emerald-500 text-white',
-  // },
+  {
+    id: 'codex',
+    name: 'Codex',
+    infoKey: 'providerSelection.providerInfo.openai',
+    accent: 'border-emerald-600 dark:border-emerald-400',
+    ring: 'ring-emerald-600/15',
+    check: 'bg-emerald-600 dark:bg-emerald-500 text-white',
+  },
 ];
 
 function getModelConfig(p: SessionProvider) {
