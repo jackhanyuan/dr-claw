@@ -554,6 +554,14 @@ async function getProjects(progressCallback = null) {
           project.codexSessions = [];
         }
 
+        // Also fetch Gemini sessions for this project
+        try {
+          project.geminiSessions = await getGeminiSessions(actualProjectDir);
+        } catch (e) {
+          console.warn(`Could not load Gemini sessions for project ${entry.name}:`, e.message);
+          project.geminiSessions = [];
+        }
+
         // Add TaskMaster detection
         try {
           const taskMasterResult = await detectTaskMasterFolder(actualProjectDir);
@@ -671,6 +679,13 @@ async function getProjects(progressCallback = null) {
         });
       } catch (e) {
         console.warn(`Could not load Codex sessions for manual project ${projectName}:`, e.message);
+      }
+
+      // Try to fetch Gemini sessions for manual projects too
+      try {
+        project.geminiSessions = await getGeminiSessions(actualProjectDir);
+      } catch (e) {
+        console.warn(`Could not load Gemini sessions for manual project ${projectName}:`, e.message);
       }
 
       // Add TaskMaster detection for manual projects
@@ -1843,7 +1858,79 @@ async function getCursorSessions(projectPath) {
 }
 
 
-function normalizeComparablePath(inputPath) {
+// Fetch Gemini sessions for a given project path
+async function getGeminiSessions(projectPath) {
+  try {
+    const normalizedProjectPath = await normalizeComparablePath(projectPath);
+    const geminiSessionsDir = path.join(os.homedir(), '.gemini', 'sessions');
+
+    try {
+      await fs.access(geminiSessionsDir);
+    } catch (error) {
+      return [];
+    }
+
+    const files = await fs.readdir(geminiSessionsDir);
+    const sessions = [];
+
+    for (const file of files) {
+      if (!file.endsWith('.jsonl')) continue;
+
+      const filePath = path.join(geminiSessionsDir, file);
+      try {
+        const stats = await fs.stat(filePath);
+
+        // Read just the first few lines for metadata
+        const fileStream = fsSync.createReadStream(filePath);
+        const rl = readline.createInterface({
+          input: fileStream,
+          crlfDelay: Infinity
+        });
+
+        for await (const line of rl) {
+          if (line.trim()) {
+            try {
+              const entry = JSON.parse(line);
+              // Check various places where CWD might be stored
+              const sessionCwd = entry.cwd || entry.payload?.cwd;
+
+              if (sessionCwd) {
+                const normalizedSessionCwd = await normalizeComparablePath(sessionCwd);
+                
+                if (normalizedSessionCwd === normalizedProjectPath) {
+                  sessions.push({
+                    id: path.basename(file, '.jsonl'),
+                    name: entry.summary || entry.title || entry.payload?.title || 'Gemini Session',
+                    createdAt: stats.birthtime.toISOString(),
+                    lastActivity: stats.mtime.toISOString(),
+                    messageCount: 0,
+                    projectPath: projectPath,
+                    __provider: 'gemini'
+                  });
+                } else {
+                  // Optional: debug log for path mismatch
+                  // console.log(`[Gemini] Path mismatch: ${normalizedSessionCwd} !== ${normalizedProjectPath}`);
+                }
+              }
+            } catch (e) {}
+            break; 
+          }
+        }
+        rl.close();
+      } catch (err) {}
+    }
+
+    if (sessions.length > 0) {
+      console.log(`[Gemini] Found ${sessions.length} sessions for project ${projectPath}`);
+    }
+    return sessions.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity)).slice(0, 5);
+  } catch (error) {
+    console.error('Error fetching Gemini sessions:', error);
+    return [];
+  }
+}
+
+async function normalizeComparablePath(inputPath) {
   if (!inputPath || typeof inputPath !== 'string') {
     return '';
   }
@@ -2342,6 +2429,7 @@ export {
   extractProjectDirectory,
   clearProjectDirectoryCache,
   getCodexSessions,
+  getGeminiSessions,
   getCodexSessionMessages,
   deleteCodexSession,
   ensureProjectSkillLinks,

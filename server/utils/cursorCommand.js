@@ -48,7 +48,15 @@ function isCursorLoginCommand(command = '') {
   return /^\s*(cursor-agent|agent)\s+login(?:\s|$)/.test(command);
 }
 
+function isGeminiLoginCommand(command = '') {
+  return /^\s*gemini\s+login(?:\s|$)/.test(command);
+}
+
 function normalizeCursorLoginCommand(command = '') {
+  if (isGeminiLoginCommand(command)) {
+    return command;
+  }
+  
   if (!isCursorLoginCommand(command)) {
     return command;
   }
@@ -64,5 +72,6 @@ function normalizeCursorLoginCommand(command = '') {
 export {
   resolveCursorCliCommand,
   isCursorLoginCommand,
+  isGeminiLoginCommand,
   normalizeCursorLoginCommand
 };

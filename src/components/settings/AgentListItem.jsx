@@ -14,6 +14,10 @@ const agentConfig = {
     name: 'Codex',
     color: 'gray',
   },
+  gemini: {
+    name: 'Gemini',
+    color: 'blue',
+  },
 };
 
 const colorClasses = {

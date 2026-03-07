@@ -304,6 +304,9 @@
       },
       "codex": {
         "description": "OpenAI Codex AI 助手"
+      },
+      "gemini": {
+        "description": "Google Gemini AI CLI 助手"
       }
     },
     "connectionStatus": "连接状态",
@@ -389,6 +392,30 @@
         "overrideNote": "您可以使用聊天界面中的模式按钮按会话覆盖此设置。"
       }
     },
+    "gemini": {
+      "permissionMode": "权限模式",
+      "description": "控制 Gemini 如何处理文件修改和命令执行",
+      "modes": {
+        "default": {
+          "title": "默认",
+          "description": "只有受信任的命令（ls、cat、grep、git status 等）会自动运行。其他命令将被跳过。可以写入工作区。"
+        },
+        "acceptEdits": {
+          "title": "接受编辑",
+          "description": "所有命令在工作区内自动运行。具有沙箱执行的全自动模式。"
+        },
+        "bypassPermissions": {
+          "title": "绕过权限",
+          "description": "完全系统访问，无任何限制。所有命令自动运行，具有完整的磁盘和网络访问权限。请谨慎使用。"
+        }
+      },
+      "technicalDetails": "技术详情",
+      "technicalInfo": {
+        "default": "sandboxMode=workspace-write, approvalPolicy=untrusted。受信任的命令：cat、cd、grep、head、ls、pwd、tail、git status/log/diff/show、find（不带 -exec）等。",
+        "acceptEdits": "sandboxMode=workspace-write, approvalPolicy=never。所有命令在项目目录内自动执行。",
+        "bypassPermissions": "sandboxMode=danger-full-access, approvalPolicy=never。完全系统访问权限，仅在可信环境中使用。"
+      }
+    },
     "actions": {
       "add": "添加"
     }
@@ -398,8 +425,10 @@
     "description": {
       "claude": "Model Context Protocol 服务器为 Claude 提供额外的工具和数据源",
       "cursor": "Model Context Protocol 服务器为 Cursor 提供额外的工具和数据源",
-      "codex": "Model Context Protocol 服务器为 Codex 提供额外的工具和数据源"
-    },
+      "codex": "Model Context Protocol 服务器为 Codex 提供额外的工具和数据源",
+      "gemini": "Model Context Protocol 服务器为 Gemini 提供额外的工具和数据源"
+      },
+
     "addButton": "添加 MCP 服务器",
     "empty": "未配置 MCP 服务器",
     "serverType": "类型",

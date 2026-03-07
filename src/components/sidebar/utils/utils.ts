@@ -44,7 +44,7 @@ export const getSessionDate = (session: SessionWithProvider): Date => {
     return new Date(session.createdAt || 0);
   }
 
-  if (session.__provider === 'codex') {
+  if (session.__provider === 'codex' || session.__provider === 'gemini') {
     return new Date(session.createdAt || session.lastActivity || 0);
   }
 
@@ -60,6 +60,10 @@ export const getSessionName = (session: SessionWithProvider, t: TFunction): stri
     return session.summary || session.name || t('projects.codexSession');
   }
 
+  if (session.__provider === 'gemini') {
+    return session.summary || session.name || 'Gemini Session';
+  }
+
   return session.summary || t('projects.newSession');
 };
 
@@ -68,7 +72,7 @@ export const getSessionTime = (session: SessionWithProvider): string => {
     return String(session.createdAt || '');
   }
 
-  if (session.__provider === 'codex') {
+  if (session.__provider === 'codex' || session.__provider === 'gemini') {
     return String(session.createdAt || session.lastActivity || '');
   }
 
@@ -86,6 +90,7 @@ export const createSessionViewModel = (
   return {
     isCursorSession: session.__provider === 'cursor',
     isCodexSession: session.__provider === 'codex',
+    isGeminiSession: session.__provider === 'gemini',
     isActive: diffInMinutes < 10,
     sessionName: getSessionName(session, t),
     sessionTime: getSessionTime(session),
@@ -112,7 +117,12 @@ export const getAllSessions = (
     __provider: 'codex' as const,
   }));
 
-  return [...claudeSessions, ...cursorSessions, ...codexSessions].sort(
+  const geminiSessions = (project.geminiSessions || []).map((session) => ({
+    ...session,
+    __provider: 'gemini' as const,
+  }));
+
+  return [...claudeSessions, ...cursorSessions, ...codexSessions, ...geminiSessions].sort(
     (a, b) => getSessionDate(b).getTime() - getSessionDate(a).getTime(),
   );
 };

@@ -8,7 +8,7 @@ import { IS_PLATFORM } from '../constants/config';
  * @param {Object} props
  * @param {boolean} props.isOpen - Whether the modal is visible
  * @param {Function} props.onClose - Callback when modal is closed
- * @param {'claude'|'cursor'|'codex'} props.provider - Which CLI provider to authenticate with
+ * @param {'claude'|'cursor'|'codex'|'gemini'} props.provider - Which CLI provider to authenticate with
  * @param {Object} props.project - Project object containing name and path information
  * @param {Function} props.onComplete - Callback when login process completes (receives exitCode)
  * @param {string} props.customCommand - Optional custom command to override defaults
@@ -40,12 +40,14 @@ function LoginModal({
         return 'agent login';
       case 'codex':
         return IS_PLATFORM ? 'codex login --device-auth' : 'codex login';
+      case 'gemini':
+        return 'gemini /quit';
       default:
         return isAuthenticated
-          ? 'claude --dangerously-skip-permissions setup-token'
-          : isOnboarding
-            ? 'claude --dangerously-skip-permissions /exit'
-            : 'claude --dangerously-skip-permissions /login';
+        ? 'claude --dangerously-skip-permissions setup-token'
+        : isOnboarding
+          ? 'claude --dangerously-skip-permissions /exit'
+          : 'claude --dangerously-skip-permissions /login';
     }
   };
 
@@ -57,6 +59,8 @@ function LoginModal({
         return 'Cursor CLI Login';
       case 'codex':
         return 'Codex CLI Login';
+      case 'gemini':
+        return 'Gemini CLI Login';
       default:
         return 'CLI Login';
     }
@@ -66,8 +70,15 @@ function LoginModal({
     if (onComplete) {
       onComplete(exitCode);
     }
-    // Keep modal open so users can read login output and close explicitly.
+
+    // Automatically close modal on success (exit code 0)
+    if (exitCode === 0) {
+      setTimeout(() => {
+        onClose();
+      }, 1000); // Small delay so user sees "completed" message
+    }
   };
+
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] max-md:items-stretch max-md:justify-stretch">

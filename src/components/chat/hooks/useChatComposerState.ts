@@ -42,6 +42,7 @@ interface UseChatComposerStateArgs {
   cursorModel: string;
   claudeModel: string;
   codexModel: string;
+  geminiModel: string;
   isLoading: boolean;
   canAbortSession: boolean;
   tokenBudget: Record<string, unknown> | null;
@@ -93,6 +94,7 @@ export function useChatComposerState({
   cursorModel,
   claudeModel,
   codexModel,
+  geminiModel,
   isLoading,
   canAbortSession,
   tokenBudget,
@@ -580,14 +582,22 @@ export function useChatComposerState({
       setIsUserScrolledUp(false);
       setTimeout(() => scrollToBottom(), 100);
 
-      const effectiveSessionId =
-        currentSessionId || selectedSession?.id || sessionStorage.getItem('cursorSessionId');
+      // Determine the session ID to use.
+      // If we're on the home route ('/') and currentSessionId is null, we are starting a new session.
+      const isExplicitNewSession = !currentSessionId && window.location.pathname === '/';
+      
+      const effectiveSessionId = isExplicitNewSession 
+        ? null 
+        : (currentSessionId || selectedSession?.id || (provider === 'gemini' ? sessionStorage.getItem('geminiSessionId') : sessionStorage.getItem('cursorSessionId')));
       const sessionToActivate = effectiveSessionId || `new-session-${Date.now()}`;
 
       if (!effectiveSessionId && !selectedSession?.id) {
         if (typeof window !== 'undefined') {
           // Reset stale pending IDs from previous interrupted runs before creating a new one.
           sessionStorage.removeItem('pendingSessionId');
+          if (provider === 'gemini') {
+            sessionStorage.removeItem('geminiSessionId');
+          }
         }
         pendingViewSessionRef.current = { sessionId: null, startedAt: Date.now() };
       }
@@ -600,6 +610,8 @@ export function useChatComposerState({
               ? 'cursor-tools-settings'
               : provider === 'codex'
               ? 'codex-settings'
+              : provider === 'gemini'
+              ? 'gemini-settings'
               : 'claude-settings';
           const savedSettings = safeLocalStorage.getItem(settingsKey);
           if (savedSettings) {
@@ -620,7 +632,11 @@ export function useChatComposerState({
       const resolvedProjectPath = selectedProject.fullPath || selectedProject.path || '';
       const telemetryEnabled = isTelemetryEnabled();
 
+      console.log('[DEBUG] useChatComposerState - provider:', provider);
+      console.log('[DEBUG] useChatComposerState - effectiveSessionId:', effectiveSessionId);
+
       if (provider === 'cursor') {
+        console.log('[DEBUG] Sending cursor-command');
         sendMessage({
           type: 'cursor-command',
           command: messageContent,
@@ -636,7 +652,25 @@ export function useChatComposerState({
             telemetryEnabled,
           },
         });
+      } else if (provider === 'gemini') {
+        console.log('[DEBUG] Sending gemini-command');
+        sendMessage({
+          type: 'gemini-command',
+          command: messageContent,
+          sessionId: effectiveSessionId,
+          options: {
+            cwd: resolvedProjectPath,
+            projectPath: resolvedProjectPath,
+            sessionId: effectiveSessionId,
+            resume: Boolean(effectiveSessionId),
+            model: geminiModel,
+            permissionMode: permissionMode === 'plan' ? 'default' : permissionMode,
+            toolsSettings,
+            telemetryEnabled,
+          },
+        });
       } else if (provider === 'codex') {
+        console.log('[DEBUG] Sending codex-command');
         sendMessage({
           type: 'codex-command',
           command: messageContent,
@@ -652,6 +686,7 @@ export function useChatComposerState({
           },
         });
       } else {
+        console.log('[DEBUG] Sending claude-command');
         sendMessage({
           type: 'claude-command',
           command: messageContent,

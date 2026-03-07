@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import ClaudeLogo from './ClaudeLogo';
 import CursorLogo from './CursorLogo';
 import CodexLogo from './CodexLogo';
+import GeminiLogo from './GeminiLogo';
 import LoginModal from './LoginModal';
 import { authenticatedFetch } from '../utils/api';
 import { IS_PLATFORM } from '../constants/config';
@@ -49,6 +50,13 @@ const Onboarding = ({ onComplete }) => {
     error: null
   });
 
+  const [geminiAuthStatus, setGeminiAuthStatus] = useState({
+    authenticated: false,
+    email: null,
+    loading: true,
+    error: null
+  });
+
   const prevActiveLoginProviderRef = useRef(undefined);
 
   useEffect(() => {
@@ -62,6 +70,7 @@ const Onboarding = ({ onComplete }) => {
       checkClaudeAuthStatus();
       checkCursorAuthStatus();
       checkCodexAuthStatus();
+      checkGeminiAuthStatus();
     }
   }, [activeLoginProvider]);
 
@@ -155,9 +164,40 @@ const Onboarding = ({ onComplete }) => {
     }
   };
 
+  const checkGeminiAuthStatus = async () => {
+    try {
+      const response = await authenticatedFetch('/api/cli/gemini/status');
+      if (response.ok) {
+        const data = await response.json();
+        setGeminiAuthStatus({
+          authenticated: data.authenticated,
+          email: data.email,
+          loading: false,
+          error: data.error || null
+        });
+      } else {
+        setGeminiAuthStatus({
+          authenticated: false,
+          email: null,
+          loading: false,
+          error: 'Failed to check authentication status'
+        });
+      }
+    } catch (error) {
+      console.error('Error checking Gemini auth status:', error);
+      setGeminiAuthStatus({
+        authenticated: false,
+        email: null,
+        loading: false,
+        error: error.message
+      });
+    }
+  };
+
   const handleClaudeLogin = () => setActiveLoginProvider('claude');
   const handleCursorLogin = () => setActiveLoginProvider('cursor');
   const handleCodexLogin = () => setActiveLoginProvider('codex');
+  const handleGeminiLogin = () => setActiveLoginProvider('gemini');
 
   const handleLoginComplete = (exitCode) => {
     if (exitCode === 0) {
@@ -167,6 +207,8 @@ const Onboarding = ({ onComplete }) => {
         checkCursorAuthStatus();
       } else if (activeLoginProvider === 'codex') {
         checkCodexAuthStatus();
+      } else if (activeLoginProvider === 'gemini') {
+        checkGeminiAuthStatus();
       }
     }
   };
@@ -382,6 +424,39 @@ const Onboarding = ({ onComplete }) => {
                   {!claudeAuthStatus.authenticated && !claudeAuthStatus.loading && (
                     <button
                       onClick={handleClaudeLogin}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors"
+                    >
+                      Login
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Gemini */}
+              <div className={`border rounded-lg p-4 transition-colors ${
+                geminiAuthStatus.authenticated
+                  ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800'
+                  : 'border-border bg-card'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                      <GeminiLogo className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground flex items-center gap-2">
+                        Gemini CLI
+                        {geminiAuthStatus.authenticated && <Check className="w-4 h-4 text-green-500" />}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {geminiAuthStatus.loading ? 'Checking...' :
+                         geminiAuthStatus.authenticated ? geminiAuthStatus.email || 'Connected' : 'Not connected'}
+                      </div>
+                    </div>
+                  </div>
+                  {!geminiAuthStatus.authenticated && !geminiAuthStatus.loading && (
+                    <button
+                      onClick={handleGeminiLogin}
                       className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors"
                     >
                       Login

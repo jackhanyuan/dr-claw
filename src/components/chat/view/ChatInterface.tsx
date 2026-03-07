@@ -72,6 +72,8 @@ function ChatInterface({
     setClaudeModel,
     codexModel,
     setCodexModel,
+    geminiModel,
+    setGeminiModel,
     permissionMode,
     pendingPermissionRequests,
     setPendingPermissionRequests,
@@ -184,6 +186,7 @@ function ChatInterface({
     cursorModel,
     claudeModel,
     codexModel,
+    geminiModel,
     isLoading,
     canAbortSession,
     tokenBudget,
@@ -354,6 +357,8 @@ function ChatInterface({
           setCursorModel={setCursorModel}
           codexModel={codexModel}
           setCodexModel={setCodexModel}
+          geminiModel={geminiModel}
+          setGeminiModel={setGeminiModel}
           isLoadingMoreMessages={isLoadingMoreMessages}
           hasMoreMessages={hasMoreMessages}
           totalMessages={totalMessages}

@@ -85,6 +85,121 @@ router.get('/codex/status', async (req, res) => {
   }
 });
 
+router.get('/gemini/status', async (req, res) => {
+  try {
+    const result = await checkGeminiCredentials();
+
+    res.json({
+      authenticated: result.authenticated,
+      email: result.email,
+      error: result.error
+    });
+
+  } catch (error) {
+    console.error('Error checking Gemini auth status:', error);
+    res.status(500).json({
+      authenticated: false,
+      email: null,
+      error: error.message
+    });
+  }
+});
+
+async function checkGeminiCredentials() {
+  console.log('[DEBUG] Checking Gemini credentials...');
+  try {
+    // Check for GOOGLE_API_KEY environment variable first
+    if (process.env.GOOGLE_API_KEY) {
+      console.log('[DEBUG] Gemini: Found GOOGLE_API_KEY in environment');
+      return {
+        authenticated: true,
+        email: 'API Key (Env)'
+      };
+    }
+
+    // Check for OAuth credentials file (new Gemini CLI)
+    const oauthPath = path.join(os.homedir(), '.gemini', 'oauth_creds.json');
+    console.log(`[DEBUG] Gemini: Checking for OAuth file at ${oauthPath}`);
+    try {
+      const content = await fs.readFile(oauthPath, 'utf8');
+      const creds = JSON.parse(content);
+      
+      // Check for presence of refresh_token or access_token
+      if (creds.refresh_token || creds.access_token) {
+        let email = creds.email || 'OAuth (Config)';
+        
+        // Try to extract email from id_token if available
+        if (!creds.email && creds.id_token) {
+          try {
+            const parts = creds.id_token.split('.');
+            if (parts.length >= 2) {
+              const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+              email = payload.email || email;
+            }
+          } catch (jwtError) {
+            console.warn('[DEBUG] Gemini: Failed to decode id_token', jwtError.message);
+          }
+        }
+        
+        console.log(`[DEBUG] Gemini: Authenticated via OAuth as ${email}`);
+        return {
+          authenticated: true,
+          email: email
+        };
+      } else {
+        console.log('[DEBUG] Gemini: OAuth file found but no tokens present');
+      }
+    } catch (e) {
+      if (e.code !== 'ENOENT') {
+        console.error('[DEBUG] Gemini: Error reading oauth_creds.json', e.message);
+      } else {
+        console.log('[DEBUG] Gemini: oauth_creds.json not found');
+      }
+    }
+
+    // Fallback to legacy config file check
+    const configPath = path.join(os.homedir(), '.gemini', 'config.json');
+    console.log(`[DEBUG] Gemini: Checking for legacy config at ${configPath}`);
+    try {
+      const content = await fs.readFile(configPath, 'utf8');
+      const config = JSON.parse(content);
+
+      if (config.apiKey || config.GOOGLE_API_KEY) {
+        console.log('[DEBUG] Gemini: Authenticated via legacy config API Key');
+        return {
+          authenticated: true,
+          email: 'API Key (Config)'
+        };
+      }
+    } catch (e) {
+      if (e.code !== 'ENOENT') {
+        console.error('[DEBUG] Gemini: Error reading config.json', e.message);
+      }
+    }
+
+    console.log('[DEBUG] Gemini: Not authenticated (no valid credentials found)');
+    return {
+      authenticated: false,
+      email: null,
+      error: 'Gemini not configured'
+    };
+  } catch (error) {
+    console.error('[DEBUG] Gemini: Unexpected error during auth check', error);
+    if (error.code === 'ENOENT') {
+      return {
+        authenticated: false,
+        email: null,
+        error: 'Gemini not configured'
+      };
+    }
+    return {
+      authenticated: false,
+      email: null,
+      error: error.message
+    };
+  }
+}
+
 function checkClaudeCredentials() {
   return new Promise((resolve) => {
     let processCompleted = false;

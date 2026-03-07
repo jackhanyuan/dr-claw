@@ -31,6 +31,8 @@ interface ChatMessagesPaneProps {
   setCursorModel: (model: string) => void;
   codexModel: string;
   setCodexModel: (model: string) => void;
+  geminiModel: string;
+  setGeminiModel: (model: string) => void;
   isLoadingMoreMessages: boolean;
   hasMoreMessages: boolean;
   totalMessages: number;
@@ -73,6 +75,8 @@ export default function ChatMessagesPane({
   setCursorModel,
   codexModel,
   setCodexModel,
+  geminiModel,
+  setGeminiModel,
   isLoadingMoreMessages,
   hasMoreMessages,
   totalMessages,
@@ -159,6 +163,8 @@ export default function ChatMessagesPane({
             setCursorModel={setCursorModel}
             codexModel={codexModel}
             setCodexModel={setCodexModel}
+            geminiModel={geminiModel}
+            setGeminiModel={setGeminiModel}
             projectName={selectedProject.name}
             setInput={setInput}
           />

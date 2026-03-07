@@ -63,7 +63,7 @@ function getPreferredProvider(selectedSession) {
   }
 
   const storedProvider = localStorage.getItem('selected-provider');
-  if (storedProvider === 'cursor' || storedProvider === 'codex' || storedProvider === 'claude') {
+  if (storedProvider === 'cursor' || storedProvider === 'codex' || storedProvider === 'claude' || storedProvider === 'gemini') {
     return storedProvider;
   }
 

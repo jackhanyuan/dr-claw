@@ -597,6 +597,119 @@ function CodexPermissions({ permissionMode, setPermissionMode }) {
   );
 }
 
+// Gemini Permissions
+function GeminiPermissions({ permissionMode, setPermissionMode }) {
+  const { t } = useTranslation('settings');
+  return (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Shield className="w-5 h-5 text-blue-500" />
+          <h3 className="text-lg font-medium text-foreground">
+            {t('permissions.gemini.permissionMode')}
+          </h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {t('permissions.gemini.description')}
+        </p>
+
+        {/* Default Mode */}
+        <div
+          className={`border rounded-lg p-4 cursor-pointer transition-all ${
+            permissionMode === 'default'
+              ? 'bg-gray-100 dark:bg-gray-800 border-gray-400 dark:border-gray-500'
+              : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+          }`}
+          onClick={() => setPermissionMode('default')}
+        >
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="radio"
+              name="geminiPermissionMode"
+              checked={permissionMode === 'default'}
+              onChange={() => setPermissionMode('default')}
+              className="mt-1 w-4 h-4 text-blue-600"
+            />
+            <div>
+              <div className="font-medium text-foreground">{t('permissions.gemini.modes.default.title')}</div>
+              <div className="text-sm text-muted-foreground">
+                {t('permissions.gemini.modes.default.description')}
+              </div>
+            </div>
+          </label>
+        </div>
+
+        {/* Accept Edits Mode */}
+        <div
+          className={`border rounded-lg p-4 cursor-pointer transition-all ${
+            permissionMode === 'acceptEdits'
+              ? 'bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-600'
+              : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+          }`}
+          onClick={() => setPermissionMode('acceptEdits')}
+        >
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="radio"
+              name="geminiPermissionMode"
+              checked={permissionMode === 'acceptEdits'}
+              onChange={() => setPermissionMode('acceptEdits')}
+              className="mt-1 w-4 h-4 text-blue-600"
+            />
+            <div>
+              <div className="font-medium text-green-900 dark:text-green-100">{t('permissions.gemini.modes.acceptEdits.title')}</div>
+              <div className="text-sm text-green-700 dark:text-green-300">
+                {t('permissions.gemini.modes.acceptEdits.description')}
+              </div>
+            </div>
+          </label>
+        </div>
+
+        {/* Bypass Permissions Mode */}
+        <div
+          className={`border rounded-lg p-4 cursor-pointer transition-all ${
+            permissionMode === 'bypassPermissions'
+              ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-400 dark:border-orange-600'
+              : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+          }`}
+          onClick={() => setPermissionMode('bypassPermissions')}
+        >
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="radio"
+              name="geminiPermissionMode"
+              checked={permissionMode === 'bypassPermissions'}
+              onChange={() => setPermissionMode('bypassPermissions')}
+              className="mt-1 w-4 h-4 text-orange-600"
+            />
+            <div>
+              <div className="font-medium text-orange-900 dark:text-orange-100 flex items-center gap-2">
+                {t('permissions.gemini.modes.bypassPermissions.title')}
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div className="text-sm text-orange-700 dark:text-orange-300">
+                {t('permissions.gemini.modes.bypassPermissions.description')}
+              </div>
+            </div>
+          </label>
+        </div>
+
+        {/* Technical Details */}
+        <details className="text-sm">
+          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+            {t('permissions.gemini.technicalDetails')}
+          </summary>
+          <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg text-xs text-muted-foreground space-y-2">
+            <p><strong>{t('permissions.gemini.modes.default.title')}:</strong> {t('permissions.gemini.technicalInfo.default')}</p>
+            <p><strong>{t('permissions.gemini.modes.acceptEdits.title')}:</strong> {t('permissions.gemini.technicalInfo.acceptEdits')}</p>
+            <p><strong>{t('permissions.gemini.modes.bypassPermissions.title')}:</strong> {t('permissions.gemini.technicalInfo.bypassPermissions')}</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  );
+}
+
 // Main component
 export default function PermissionsContent({ agent, ...props }) {
   if (agent === 'claude') {
@@ -607,6 +720,9 @@ export default function PermissionsContent({ agent, ...props }) {
   }
   if (agent === 'codex') {
     return <CodexPermissions {...props} />;
+  }
+  if (agent === 'gemini') {
+    return <GeminiPermissions {...props} />;
   }
   return null;
 }

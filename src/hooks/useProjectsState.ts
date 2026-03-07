@@ -68,6 +68,7 @@ const getProjectSessions = (project: Project): ProjectSession[] => {
     ...(project.sessions ?? []),
     ...(project.codexSessions ?? []),
     ...(project.cursorSessions ?? []),
+    ...(project.geminiSessions ?? []),
   ];
 };
 
@@ -336,6 +337,24 @@ export function useProjectsState({
         }
         if (shouldUpdateSession) {
           setSelectedSession({ ...codexSession, __provider: 'codex' });
+        }
+        if (shouldSwitchTab) {
+          setActiveTab('chat');
+        }
+        return;
+      }
+
+      const geminiSession = project.geminiSessions?.find((session) => session.id === sessionId);
+      if (geminiSession) {
+        const shouldUpdateProject = selectedProject?.name !== project.name;
+        const shouldUpdateSession =
+          selectedSession?.id !== sessionId || selectedSession.__provider !== 'gemini';
+
+        if (shouldUpdateProject) {
+          setSelectedProject(project);
+        }
+        if (shouldUpdateSession) {
+          setSelectedSession({ ...geminiSession, __provider: 'gemini' });
         }
         if (shouldSwitchTab) {
           setActiveTab('chat');

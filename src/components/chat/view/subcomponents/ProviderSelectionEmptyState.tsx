@@ -2,7 +2,7 @@ import React from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import SessionProviderLogo from '../../../SessionProviderLogo';
-import { CLAUDE_MODELS, CURSOR_MODELS, CODEX_MODELS } from '../../../../../shared/modelConstants';
+import { CLAUDE_MODELS, CURSOR_MODELS, CODEX_MODELS, GEMINI_MODELS } from '../../../../../shared/modelConstants';
 import type { ProjectSession, SessionProvider } from '../../../../types/app';
 import GuidedPromptStarter from './GuidedPromptStarter';
 
@@ -18,6 +18,8 @@ interface ProviderSelectionEmptyStateProps {
   setCursorModel: (model: string) => void;
   codexModel: string;
   setCodexModel: (model: string) => void;
+  geminiModel: string;
+  setGeminiModel: (model: string) => void;
   projectName: string;
   setInput: React.Dispatch<React.SetStateAction<string>>;
 }
@@ -39,6 +41,14 @@ const PROVIDERS: ProviderDef[] = [
     accent: 'border-primary',
     ring: 'ring-primary/15',
     check: 'bg-primary text-primary-foreground',
+  },
+  {
+    id: 'gemini',
+    name: 'Gemini CLI',
+    infoKey: 'providerSelection.providerInfo.google',
+    accent: 'border-blue-500 dark:border-blue-400',
+    ring: 'ring-blue-500/15',
+    check: 'bg-blue-500 text-white',
   },
   // Cursor temporarily hidden — will re-add when content is ready
   // {
@@ -62,12 +72,14 @@ const PROVIDERS: ProviderDef[] = [
 function getModelConfig(p: SessionProvider) {
   if (p === 'claude') return CLAUDE_MODELS;
   if (p === 'codex') return CODEX_MODELS;
+  if (p === 'gemini') return GEMINI_MODELS;
   return CURSOR_MODELS;
 }
 
-function getModelValue(p: SessionProvider, c: string, cu: string, co: string) {
+function getModelValue(p: SessionProvider, c: string, cu: string, co: string, g: string) {
   if (p === 'claude') return c;
   if (p === 'codex') return co;
+  if (p === 'gemini') return g;
   return cu;
 }
 
@@ -83,6 +95,8 @@ export default function ProviderSelectionEmptyState({
   setCursorModel,
   codexModel,
   setCodexModel,
+  geminiModel,
+  setGeminiModel,
   projectName,
   setInput,
 }: ProviderSelectionEmptyStateProps) {
@@ -97,11 +111,12 @@ export default function ProviderSelectionEmptyState({
   const handleModelChange = (value: string) => {
     if (provider === 'claude') { setClaudeModel(value); localStorage.setItem('claude-model', value); }
     else if (provider === 'codex') { setCodexModel(value); localStorage.setItem('codex-model', value); }
+    else if (provider === 'gemini') { setGeminiModel(value); localStorage.setItem('gemini-model', value); }
     else { setCursorModel(value); localStorage.setItem('cursor-model', value); }
   };
 
   const modelConfig = getModelConfig(provider);
-  const currentModel = getModelValue(provider, claudeModel, cursorModel, codexModel);
+  const currentModel = getModelValue(provider, claudeModel, cursorModel, codexModel, geminiModel);
 
   /* ── New session — provider picker ── */
   if (!selectedSession && !currentSessionId) {

@@ -304,6 +304,9 @@
       },
       "codex": {
         "description": "OpenAI Codex AI assistant"
+      },
+      "gemini": {
+        "description": "Google Gemini AI CLI assistant"
       }
     },
     "connectionStatus": "Connection Status",
@@ -389,6 +392,30 @@
         "overrideNote": "You can override this per-session using the mode button in the chat interface."
       }
     },
+    "gemini": {
+      "permissionMode": "Permission Mode",
+      "description": "Controls how Gemini handles file modifications and command execution",
+      "modes": {
+        "default": {
+          "title": "Default",
+          "description": "Only trusted commands (ls, cat, grep, git status, etc.) run automatically. Other commands are skipped. Can write to workspace."
+        },
+        "acceptEdits": {
+          "title": "Accept Edits",
+          "description": "All commands run automatically within the workspace. Full auto mode with sandboxed execution."
+        },
+        "bypassPermissions": {
+          "title": "Bypass Permissions",
+          "description": "Full system access with no restrictions. All commands run automatically with full disk and network access. Use with caution."
+        }
+      },
+      "technicalDetails": "Technical details",
+      "technicalInfo": {
+        "default": "sandboxMode=workspace-write, approvalPolicy=untrusted. Trusted commands: cat, cd, grep, head, ls, pwd, tail, git status/log/diff/show, find (without -exec), etc.",
+        "acceptEdits": "sandboxMode=workspace-write, approvalPolicy=never. All commands auto-execute within project directory.",
+        "bypassPermissions": "sandboxMode=danger-full-access, approvalPolicy=never. Full system access, use only in trusted environments."
+      }
+    },
     "actions": {
       "add": "Add"
     }
@@ -398,7 +425,8 @@
     "description": {
       "claude": "Model Context Protocol servers provide additional tools and data sources to Claude",
       "cursor": "Model Context Protocol servers provide additional tools and data sources to Cursor",
-      "codex": "Model Context Protocol servers provide additional tools and data sources to Codex"
+      "codex": "Model Context Protocol servers provide additional tools and data sources to Codex",
+      "gemini": "Model Context Protocol servers provide additional tools and data sources to Gemini"
     },
     "addButton": "Add MCP Server",
     "empty": "No MCP servers configured",

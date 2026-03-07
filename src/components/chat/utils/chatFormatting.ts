@@ -46,10 +46,88 @@ export function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+export function formatFileTreeInContent(text: string): string {
+  if (!text || typeof text !== 'string') return text;
+
+  // Pattern to detect file tree structures
+  // Matches lines starting with ├──, └──, │, or multiple spaces followed by these symbols
+  // Also matches the root directory line which often precedes the tree
+  const lines = text.split('\n');
+  const result: string[] = [];
+  let isInTree = false;
+  let treeLines: string[] = [];
+
+  const isTreeLine = (line: string) => {
+    const trimmed = line.trim();
+    return (
+      trimmed.startsWith('├──') ||
+      trimmed.startsWith('└──') ||
+      trimmed.startsWith('│') ||
+      (trimmed.includes('──') && (trimmed.includes('├') || trimmed.includes('└')))
+    );
+  };
+
+  const isPossibleRootLine = (line: string) => {
+    const trimmed = line.trim();
+    // Common root patterns: "dir/", "./dir", "/path/to/dir"
+    return (
+      trimmed.endsWith('/') ||
+      trimmed.startsWith('./') ||
+      trimmed.startsWith('/') ||
+      (trimmed.length > 0 && !trimmed.includes(' ') && trimmed.includes('/'))
+    );
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const nextLine = lines[i + 1];
+
+    if (isTreeLine(line)) {
+      if (!isInTree) {
+        // Look back one line to see if it's the root directory
+        if (result.length > 0 && isPossibleRootLine(result[result.length - 1])) {
+          const rootLine = result.pop()!;
+          isInTree = true;
+          treeLines = [rootLine, line];
+        } else {
+          isInTree = true;
+          treeLines = [line];
+        }
+      } else {
+        treeLines.push(line);
+      }
+    } else if (isInTree) {
+      // Sometimes there are empty lines or lines with just vertical bars in a tree
+      if (line.trim() === '' || line.trim() === '│') {
+        treeLines.push(line);
+      } else {
+        // End of tree
+        result.push('```text\n' + treeLines.join('\n') + '\n```');
+        result.push(line);
+        isInTree = false;
+        treeLines = [];
+      }
+    } else {
+      result.push(line);
+    }
+  }
+
+  // Handle case where tree ends at the last line
+  if (isInTree) {
+    result.push('```text\n' + treeLines.join('\n') + '\n```');
+  }
+
+  return result.join('\n');
+}
+
 export function formatUsageLimitText(text: string) {
   try {
     if (typeof text !== 'string') return text;
-    return text.replace(/Claude AI usage limit reached\|(\d{10,13})/g, (match, ts) => {
+    
+    // First apply file tree formatting
+    let formattedText = formatFileTreeInContent(text);
+
+    return formattedText.replace(/Claude AI usage limit reached\|(\d{10,13})/g, (match, ts) => {
       let timestampMs = parseInt(ts, 10);
       if (!Number.isFinite(timestampMs)) return match;
       if (timestampMs < 1e12) timestampMs *= 1000;
