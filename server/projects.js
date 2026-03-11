@@ -1983,7 +1983,7 @@ async function buildCodexSessionsIndex() {
         continue;
       }
 
-      const normalizedProjectPath = normalizeComparablePath(sessionData.cwd);
+      const normalizedProjectPath = await normalizeComparablePath(sessionData.cwd);
       if (!normalizedProjectPath) {
         continue;
       }
@@ -2020,7 +2020,7 @@ async function buildCodexSessionsIndex() {
 async function getCodexSessions(projectPath, options = {}) {
   const { limit = 5, indexRef = null } = options;
   try {
-    const normalizedProjectPath = normalizeComparablePath(projectPath);
+    const normalizedProjectPath = await normalizeComparablePath(projectPath);
     if (!normalizedProjectPath) {
       return [];
     }
