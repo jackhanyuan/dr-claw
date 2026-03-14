@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Mic, MicOff } from 'lucide-react';
 
 const SpeechRecognition = typeof window !== 'undefined'
@@ -11,6 +12,8 @@ export function MicButton({ onTranscript, className = '' }) {
   const recognitionRef = useRef(null);
   const lastTapRef = useRef(0);
   const committedIndexRef = useRef(0); // index of next result to commit
+  const buttonRef = useRef(null);
+  const [tooltipPos, setTooltipPos] = useState(null);
 
   const isSupported = !!SpeechRecognition;
 
@@ -51,10 +54,15 @@ export function MicButton({ onTranscript, className = '' }) {
 
     recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
-      if (event.error === 'not-allowed') {
+      const err = event.error;
+      if (err === 'not-allowed') {
         setError('Microphone access denied. Please allow microphone permissions.');
-      } else if (event.error !== 'no-speech') {
-        setError(`Speech recognition error: ${event.error}`);
+      } else if (err === 'network' || err === 'ne') {
+        setError('Speech recognition requires Chrome or Edge browser and an internet connection.');
+      } else if (err === 'audio-capture') {
+        setError('No microphone detected. Please check your audio input device.');
+      } else if (err !== 'no-speech' && err !== 'aborted') {
+        setError('Speech recognition failed. Please use Chrome or Edge and try again.');
       }
       stopRecording();
     };
@@ -97,6 +105,16 @@ export function MicButton({ onTranscript, className = '' }) {
     }
   };
 
+  // Update tooltip position when error appears
+  useEffect(() => {
+    if (error && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setTooltipPos({ top: rect.top - 8, right: window.innerWidth - rect.right });
+    } else {
+      setTooltipPos(null);
+    }
+  }, [error]);
+
   // Clean up on unmount
   useEffect(() => {
     return () => {
@@ -111,6 +129,7 @@ export function MicButton({ onTranscript, className = '' }) {
   return (
     <div className="relative" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
       <button
+        ref={buttonRef}
         type="button"
         style={{
           backgroundColor: isRecording ? '#22c55e' : '#374151'
@@ -133,12 +152,21 @@ export function MicButton({ onTranscript, className = '' }) {
         <Mic className={`w-5 h-5 ${isRecording ? 'animate-pulse text-white' : 'text-gray-300'}`} />
       </button>
 
-      {error && (
-        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2
-                        bg-red-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50
-                        animate-fade-in">
+      {error && tooltipPos && createPortal(
+        <div
+          className="bg-red-500 text-white text-xs px-2 py-1 rounded z-50
+                     animate-fade-in w-max max-w-[260px]"
+          style={{
+            position: 'fixed',
+            top: tooltipPos.top,
+            right: tooltipPos.right,
+            transform: 'translateY(-100%)',
+            pointerEvents: 'none',
+          }}
+        >
           {error}
-        </div>
+        </div>,
+        document.body
       )}
 
       {isRecording && (
