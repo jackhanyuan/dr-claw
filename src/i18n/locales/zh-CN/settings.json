@@ -290,8 +290,10 @@
       "checking": "检查中...",
       "connected": "已连接",
       "notConnected": "未连接",
+      "installRequired": "需要安装",
       "disconnected": "已断开",
       "checkingAuth": "正在检查认证状态...",
+      "cliMissing": "未安装 {{command}}",
       "loggedInAs": "登录为 {{email}}",
       "authenticatedUser": "已认证用户"
     },
@@ -314,9 +316,13 @@
       "title": "登录",
       "reAuthenticate": "重新认证",
       "description": "登录您的 {{agent}} 账户以启用 AI 功能",
+      "installDescription": "请先安装 {{agent}} CLI，再进行登录",
       "reAuthDescription": "使用其他账户登录或刷新凭据",
       "button": "登录",
       "reLoginButton": "重新登录"
+    },
+    "install": {
+      "title": "缺少 CLI 依赖"
     },
     "error": "错误：{{error}}"
   },

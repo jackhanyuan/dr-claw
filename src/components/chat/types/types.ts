@@ -120,3 +120,9 @@ export interface ChatInterfaceProps {
   pendingAutoIntake?: boolean;
   clearPendingAutoIntake?: () => void;
 }
+
+export interface ProviderAvailability {
+  cliAvailable: boolean;
+  cliCommand?: string | null;
+  installHint?: string | null;
+}

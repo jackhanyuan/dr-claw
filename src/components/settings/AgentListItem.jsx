@@ -45,6 +45,7 @@ export default function AgentListItem({ agentId, authStatus, isSelected, onClick
   const { t } = useTranslation('settings');
   const config = agentConfig[agentId];
   const colors = colorClasses[config.color];
+  const cliMissing = authStatus?.cliAvailable === false;
 
   // Mobile: horizontal layout with bottom border
   if (isMobile) {
@@ -62,6 +63,9 @@ export default function AgentListItem({ agentId, authStatus, isSelected, onClick
           <span className="text-xs font-medium text-foreground">{config.name}</span>
           {authStatus?.authenticated && (
             <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
+          )}
+          {cliMissing && (
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
           )}
         </div>
       </button>
@@ -91,6 +95,11 @@ export default function AgentListItem({ agentId, authStatus, isSelected, onClick
             <span className="truncate max-w-[120px]" title={authStatus.email}>
               {authStatus.email || t('agents.authStatus.connected')}
             </span>
+          </div>
+        ) : cliMissing ? (
+          <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <span>{t('agents.authStatus.installRequired')}</span>
           </div>
         ) : (
           <div className="flex items-center gap-1">

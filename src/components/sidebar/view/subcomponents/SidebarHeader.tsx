@@ -71,6 +71,7 @@ export default function SidebarHeader({
 
           <div className="flex items-center gap-0.5 flex-shrink-0">
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-accent/80 rounded-lg"
@@ -85,6 +86,7 @@ export default function SidebarHeader({
               />
             </Button>
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-accent/80 rounded-lg"
@@ -94,6 +96,7 @@ export default function SidebarHeader({
               <Plus className="w-3.5 h-3.5" />
             </Button>
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-accent/80 rounded-lg"
@@ -120,6 +123,7 @@ export default function SidebarHeader({
                 />
                 {searchFilter && (
                   <button
+                    type="button"
                     onClick={onClearSearchFilter}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-accent rounded-md"
                   >
@@ -130,6 +134,7 @@ export default function SidebarHeader({
             )}
 
             <Button
+              type="button"
               variant={activeTab === 'dashboard' ? 'secondary' : 'outline'}
               size="sm"
               className="h-9 w-full justify-start rounded-xl"
@@ -140,6 +145,7 @@ export default function SidebarHeader({
             </Button>
 
             <Button
+              type="button"
               variant={activeTab === 'news' ? 'secondary' : 'outline'}
               size="sm"
               className="h-9 w-full justify-start rounded-xl"
@@ -150,6 +156,7 @@ export default function SidebarHeader({
             </Button>
 
             <Button
+              type="button"
               variant={activeTab === 'skills' ? 'secondary' : 'outline'}
               size="sm"
               className="h-9 w-full justify-start rounded-xl"
@@ -185,6 +192,7 @@ export default function SidebarHeader({
 
           <div className="flex gap-1.5 flex-shrink-0">
             <button
+              type="button"
               className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center active:scale-95 transition-all"
               onClick={onRefresh}
               disabled={isRefreshing}
@@ -192,6 +200,7 @@ export default function SidebarHeader({
               <RefreshCw className={`w-4 h-4 text-muted-foreground ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
             <button
+              type="button"
               className="w-8 h-8 rounded-lg bg-primary/90 text-primary-foreground flex items-center justify-center active:scale-95 transition-all"
               onClick={onCreateProject}
             >
@@ -215,6 +224,7 @@ export default function SidebarHeader({
                 />
                 {searchFilter && (
                   <button
+                    type="button"
                     onClick={onClearSearchFilter}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 hover:bg-accent rounded-md"
                   >
@@ -225,6 +235,7 @@ export default function SidebarHeader({
             )}
 
             <Button
+              type="button"
               variant={activeTab === 'dashboard' ? 'secondary' : 'outline'}
               className="h-10 w-full justify-start rounded-xl"
               onClick={onOpenDashboard}
@@ -234,6 +245,7 @@ export default function SidebarHeader({
             </Button>
 
             <Button
+              type="button"
               variant={activeTab === 'news' ? 'secondary' : 'outline'}
               className="h-10 w-full justify-start rounded-xl"
               onClick={onOpenNews}
@@ -243,6 +255,7 @@ export default function SidebarHeader({
             </Button>
 
             <Button
+              type="button"
               variant={activeTab === 'skills' ? 'secondary' : 'outline'}
               className="h-10 w-full justify-start rounded-xl"
               onClick={onOpenSkills}

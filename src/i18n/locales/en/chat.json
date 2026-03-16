@@ -159,6 +159,9 @@
     "title": "Choose Your AI Assistant",
     "description": "Select a provider to start a new conversation",
     "selectModel": "Select Model",
+    "notInstalled": "Not installed",
+    "installRequired": "{{provider}} CLI is not installed",
+    "unavailableHint": "Some CLI backends are unavailable on this machine. Install the missing tools in Settings before using them.",
     "providerInfo": {
       "anthropic": "by Anthropic",
       "openai": "by OpenAI",

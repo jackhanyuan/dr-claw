@@ -8,32 +8,118 @@ import { resolveCursorCliCommand } from '../utils/cursorCommand.js';
 
 const router = express.Router();
 
+function checkCommandAvailable(command, args = ['--help']) {
+  return new Promise((resolve) => {
+    let completed = false;
+
+    let childProcess;
+    try {
+      childProcess = spawn(command, args, {
+        stdio: 'ignore',
+        env: process.env
+      });
+    } catch {
+      resolve(false);
+      return;
+    }
+
+    const finish = (value) => {
+      if (completed) return;
+      completed = true;
+      resolve(value);
+    };
+
+    const timeout = setTimeout(() => {
+      if (!completed) {
+        childProcess.kill();
+      }
+      finish(true);
+    }, 3000);
+
+    childProcess.on('error', (error) => {
+      clearTimeout(timeout);
+      if (error?.code === 'ENOENT') {
+        finish(false);
+        return;
+      }
+      finish(true);
+    });
+
+    childProcess.on('spawn', () => {
+      clearTimeout(timeout);
+      finish(true);
+    });
+
+    childProcess.on('close', (code) => {
+      clearTimeout(timeout);
+      finish(code !== 127);
+    });
+  });
+}
+
+function buildCliInstallHint(agent) {
+  switch (agent) {
+    case 'claude':
+      return 'Claude Code CLI is not installed. Install it first, then retry login.';
+    case 'cursor':
+      return 'Cursor CLI is not installed. Install it first, then retry login.';
+    case 'codex':
+      return 'Codex CLI is not installed. Install it first, then retry login.';
+    case 'gemini':
+      return 'Gemini CLI is not installed. Install it first, then retry login.';
+    default:
+      return 'Required CLI is not installed. Install it first, then retry login.';
+  }
+}
+
+function isCliMockedMissing(agent) {
+  const raw = process.env.MOCK_MISSING_CLIS || '';
+  return raw
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean)
+    .includes(agent);
+}
+
+function buildStatusPayload(result, agent) {
+  return {
+    authenticated: Boolean(result.authenticated),
+    email: result.email || null,
+    error: result.error || null,
+    cliAvailable: result.cliAvailable !== false,
+    cliCommand: result.cliCommand || null,
+    installHint: result.installHint || (result.cliAvailable === false ? buildCliInstallHint(agent) : null)
+  };
+}
+
 router.get('/claude/status', async (req, res) => {
   try {
     const credentialsResult = await checkClaudeCredentials();
 
     if (credentialsResult.authenticated) {
-      return res.json({
-        authenticated: true,
+      return res.json(buildStatusPayload({
+        ...credentialsResult,
         email: credentialsResult.email || 'Authenticated',
         method: 'cli'
-      });
+      }, 'claude'));
     }
 
     // Check for Custom API env var
     if (process.env.ANTHROPIC_AUTH_TOKEN) {
-      return res.json({
+      return res.json(buildStatusPayload({
         authenticated: true,
         email: 'Custom API Connected',
-        method: 'custom_api'
-      });
+        method: 'custom_api',
+        cliAvailable: credentialsResult.cliAvailable,
+        cliCommand: credentialsResult.cliCommand
+      }, 'claude'));
     }
 
-    return res.json({
+    return res.json(buildStatusPayload({
       authenticated: false,
       email: null,
       error: credentialsResult.error || 'Not authenticated'
-    });
+    }, 'claude'));
 
   } catch (error) {
     console.error('Error checking Claude auth status:', error);
@@ -49,11 +135,7 @@ router.get('/cursor/status', async (req, res) => {
   try {
     const result = await checkCursorStatus();
 
-    res.json({
-      authenticated: result.authenticated,
-      email: result.email,
-      error: result.error
-    });
+    res.json(buildStatusPayload(result, 'cursor'));
 
   } catch (error) {
     console.error('Error checking Cursor auth status:', error);
@@ -69,11 +151,7 @@ router.get('/codex/status', async (req, res) => {
   try {
     const result = await checkCodexCredentials();
 
-    res.json({
-      authenticated: result.authenticated,
-      email: result.email,
-      error: result.error
-    });
+    res.json(buildStatusPayload(result, 'codex'));
 
   } catch (error) {
     console.error('Error checking Codex auth status:', error);
@@ -89,11 +167,7 @@ router.get('/gemini/status', async (req, res) => {
   try {
     const result = await checkGeminiCredentials();
 
-    res.json({
-      authenticated: result.authenticated,
-      email: result.email,
-      error: result.error
-    });
+    res.json(buildStatusPayload(result, 'gemini'));
 
   } catch (error) {
     console.error('Error checking Gemini auth status:', error);
@@ -108,12 +182,37 @@ router.get('/gemini/status', async (req, res) => {
 async function checkGeminiCredentials() {
   console.log('[DEBUG] Checking Gemini credentials...');
   try {
+    if (isCliMockedMissing('gemini')) {
+      return {
+        authenticated: false,
+        email: null,
+        error: 'Gemini CLI not installed (mocked)',
+        cliAvailable: false,
+        cliCommand: 'gemini',
+        installHint: buildCliInstallHint('gemini')
+      };
+    }
+
+    const cliAvailable = await checkCommandAvailable('gemini');
+    if (!cliAvailable) {
+      return {
+        authenticated: false,
+        email: null,
+        error: 'Gemini CLI not installed',
+        cliAvailable: false,
+        cliCommand: 'gemini',
+        installHint: buildCliInstallHint('gemini')
+      };
+    }
+
     // Check for GOOGLE_API_KEY environment variable first
     if (process.env.GOOGLE_API_KEY) {
       console.log('[DEBUG] Gemini: Found GOOGLE_API_KEY in environment');
       return {
         authenticated: true,
-        email: 'API Key (Env)'
+        email: 'API Key (Env)',
+        cliAvailable: true,
+        cliCommand: 'gemini'
       };
     }
 
@@ -144,7 +243,9 @@ async function checkGeminiCredentials() {
         console.log(`[DEBUG] Gemini: Authenticated via OAuth as ${email}`);
         return {
           authenticated: true,
-          email: email
+          email: email,
+          cliAvailable: true,
+          cliCommand: 'gemini'
         };
       } else {
         console.log('[DEBUG] Gemini: OAuth file found but no tokens present');
@@ -168,7 +269,9 @@ async function checkGeminiCredentials() {
         console.log('[DEBUG] Gemini: Authenticated via legacy config API Key');
         return {
           authenticated: true,
-          email: 'API Key (Config)'
+          email: 'API Key (Config)',
+          cliAvailable: true,
+          cliCommand: 'gemini'
         };
       }
     } catch (e) {
@@ -181,7 +284,9 @@ async function checkGeminiCredentials() {
     return {
       authenticated: false,
       email: null,
-      error: 'Gemini not configured'
+      error: 'Gemini not configured',
+      cliAvailable: true,
+      cliCommand: 'gemini'
     };
   } catch (error) {
     console.error('[DEBUG] Gemini: Unexpected error during auth check', error);
@@ -189,13 +294,17 @@ async function checkGeminiCredentials() {
       return {
         authenticated: false,
         email: null,
-        error: 'Gemini not configured'
+        error: 'Gemini not configured',
+        cliAvailable: true,
+        cliCommand: 'gemini'
       };
     }
     return {
       authenticated: false,
       email: null,
-      error: error.message
+      error: error.message,
+      cliAvailable: true,
+      cliCommand: 'gemini'
     };
   }
 }
@@ -203,6 +312,7 @@ async function checkGeminiCredentials() {
 function checkClaudeCredentials() {
   return new Promise((resolve) => {
     let processCompleted = false;
+    let commandMissing = false;
 
     const timeout = setTimeout(() => {
       if (!processCompleted) {
@@ -211,7 +321,7 @@ function checkClaudeCredentials() {
           childProcess.kill();
         }
         // Fall back to credentials file check on timeout
-        checkClaudeCredentialsFile().then(resolve);
+        checkClaudeCredentialsFile({ cliAvailable: !commandMissing }).then(resolve);
       }
     }, 5000);
 
@@ -222,7 +332,7 @@ function checkClaudeCredentials() {
       });
     } catch {
       clearTimeout(timeout);
-      checkClaudeCredentialsFile().then(resolve);
+      checkClaudeCredentialsFile({ cliAvailable: false }).then(resolve);
       return;
     }
 
@@ -258,20 +368,21 @@ function checkClaudeCredentials() {
       }
 
       // CLI check failed, fall back to credentials file
-      checkClaudeCredentialsFile().then(resolve);
+      checkClaudeCredentialsFile({ cliAvailable: !commandMissing }).then(resolve);
     });
 
-    childProcess.on('error', () => {
+    childProcess.on('error', (error) => {
       if (processCompleted) return;
       processCompleted = true;
       clearTimeout(timeout);
+      commandMissing = error?.code === 'ENOENT';
       // claude CLI not available, fall back to credentials file
-      checkClaudeCredentialsFile().then(resolve);
+      checkClaudeCredentialsFile({ cliAvailable: !commandMissing }).then(resolve);
     });
   });
 }
 
-async function checkClaudeCredentialsFile() {
+async function checkClaudeCredentialsFile({ cliAvailable = true } = {}) {
   try {
     const credPath = path.join(os.homedir(), '.claude', '.credentials.json');
     const content = await fs.readFile(credPath, 'utf8');
@@ -284,19 +395,29 @@ async function checkClaudeCredentialsFile() {
       if (!isExpired) {
         return {
           authenticated: true,
-          email: creds.email || creds.user || null
+          email: creds.email || creds.user || null,
+          cliAvailable,
+          cliCommand: 'claude'
         };
       }
     }
 
     return {
       authenticated: false,
-      email: null
+      email: null,
+      cliAvailable,
+      cliCommand: 'claude',
+      error: cliAvailable ? null : 'Claude Code CLI not installed',
+      installHint: cliAvailable ? null : buildCliInstallHint('claude')
     };
   } catch (error) {
     return {
       authenticated: false,
-      email: null
+      email: null,
+      cliAvailable,
+      cliCommand: 'claude',
+      error: cliAvailable ? null : 'Claude Code CLI not installed',
+      installHint: cliAvailable ? null : buildCliInstallHint('claude')
     };
   }
 }
@@ -310,7 +431,10 @@ function checkCursorStatus() {
       resolve({
         authenticated: false,
         email: null,
-        error: 'Cursor CLI not found. Install Cursor CLI or set CURSOR_CLI_PATH to `agent` or `cursor-agent`.'
+        error: 'Cursor CLI not installed',
+        cliAvailable: false,
+        cliCommand: process.env.CURSOR_CLI_PATH || 'agent',
+        installHint: buildCliInstallHint('cursor')
       });
       return;
     }
@@ -355,26 +479,34 @@ function checkCursorStatus() {
           resolve({
             authenticated: true,
             email: emailMatch[1],
-            output: stdout
+            output: stdout,
+            cliAvailable: true,
+            cliCommand: cursorCommand
           });
         } else if (stdout.includes('Logged in')) {
           resolve({
             authenticated: true,
             email: 'Logged in',
-            output: stdout
+            output: stdout,
+            cliAvailable: true,
+            cliCommand: cursorCommand
           });
         } else {
           resolve({
             authenticated: false,
             email: null,
-            error: 'Not logged in'
+            error: 'Not logged in',
+            cliAvailable: true,
+            cliCommand: cursorCommand
           });
         }
       } else {
         resolve({
           authenticated: false,
           email: null,
-          error: stderr || 'Not logged in'
+          error: stderr || 'Not logged in',
+          cliAvailable: true,
+          cliCommand: cursorCommand
         });
       }
     });
@@ -387,7 +519,10 @@ function checkCursorStatus() {
       resolve({
         authenticated: false,
         email: null,
-        error: `${cursorCommand} is not available`
+        error: 'Cursor CLI not installed',
+        cliAvailable: false,
+        cliCommand: cursorCommand,
+        installHint: buildCliInstallHint('cursor')
       });
     });
   });
@@ -395,6 +530,18 @@ function checkCursorStatus() {
 
 async function checkCodexCredentials() {
   try {
+    const cliAvailable = await checkCommandAvailable('codex');
+    if (!cliAvailable) {
+      return {
+        authenticated: false,
+        email: null,
+        error: 'Codex CLI not installed',
+        cliAvailable: false,
+        cliCommand: 'codex',
+        installHint: buildCliInstallHint('codex')
+      };
+    }
+
     const authPath = path.join(os.homedir(), '.codex', 'auth.json');
     const content = await fs.readFile(authPath, 'utf8');
     const auth = JSON.parse(content);
@@ -423,7 +570,9 @@ async function checkCodexCredentials() {
 
       return {
         authenticated: true,
-        email
+        email,
+        cliAvailable: true,
+        cliCommand: 'codex'
       };
     }
 
@@ -431,27 +580,35 @@ async function checkCodexCredentials() {
     if (auth.OPENAI_API_KEY) {
       return {
         authenticated: true,
-        email: 'API Key Auth'
+        email: 'API Key Auth',
+        cliAvailable: true,
+        cliCommand: 'codex'
       };
     }
 
     return {
       authenticated: false,
       email: null,
-      error: 'No valid tokens found'
+      error: 'No valid tokens found',
+      cliAvailable: true,
+      cliCommand: 'codex'
     };
   } catch (error) {
     if (error.code === 'ENOENT') {
       return {
         authenticated: false,
         email: null,
-        error: 'Codex not configured'
+        error: 'Codex not configured',
+        cliAvailable: true,
+        cliCommand: 'codex'
       };
     }
     return {
       authenticated: false,
       email: null,
-      error: error.message
+      error: error.message,
+      cliAvailable: true,
+      cliCommand: 'codex'
     };
   }
 }

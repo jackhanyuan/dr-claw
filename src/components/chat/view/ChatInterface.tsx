@@ -8,13 +8,37 @@ import ChatMessagesPane from './subcomponents/ChatMessagesPane';
 import ChatComposer from './subcomponents/ChatComposer';
 import SkillShortcutsPanel from './subcomponents/SkillShortcutsPanel';
 import type { ChatInterfaceProps } from '../types/types';
+import type { ProviderAvailability } from '../types/types';
 import { useChatProviderState } from '../hooks/useChatProviderState';
 import { useChatSessionState } from '../hooks/useChatSessionState';
 import { useChatRealtimeHandlers } from '../hooks/useChatRealtimeHandlers';
 import { useChatComposerState } from '../hooks/useChatComposerState';
 import type { Provider } from '../types/types';
+import { authenticatedFetch } from '../../../utils/api';
+import { readCliAvailability, writeCliAvailability } from '../../../utils/cliAvailability';
+import type { PendingAutoIntake } from '../../../types/app';
+
+const DEFAULT_PROVIDER_AVAILABILITY: Record<Provider, ProviderAvailability> = {
+  claude: { cliAvailable: true, cliCommand: 'claude', installHint: null },
+  cursor: { cliAvailable: true, cliCommand: 'agent', installHint: null },
+  codex: { cliAvailable: true, cliCommand: 'codex', installHint: null },
+  gemini: { cliAvailable: true, cliCommand: 'gemini', installHint: null },
+};
 
 const INTAKE_GREETING = `Hello! I'm your Dr. Claw research assistant, here to help you set up your research pipeline.\n\nTo get started, could you tell me about your research field or topic?`;
+
+const getAutoIntakePrompt = (pendingAutoIntake?: PendingAutoIntake | null) => {
+  const prompt = pendingAutoIntake?.prompt?.trim();
+  return prompt || null;
+};
+
+const getAutoIntakeTriggerId = (pendingAutoIntake?: PendingAutoIntake | null) => {
+  const triggerId = pendingAutoIntake?.triggerId?.trim();
+  return triggerId || null;
+};
+
+const getAutoIntakeStorageKey = (projectName: string, triggerId?: string | null) =>
+  triggerId ? `intake_triggered_${projectName}_${triggerId}` : `intake_triggered_${projectName}`;
 
 type PendingViewSession = {
   sessionId: string | null;
@@ -176,6 +200,7 @@ function ChatInterface({
     isInputFocused,
     intakeGreeting,
     setIntakeGreeting,
+    submitProgrammaticInput,
   } = useChatComposerState({
     selectedProject,
     selectedSession,
@@ -232,10 +257,96 @@ function ChatInterface({
   });
 
   const autoIntakeTriggeredRef = useRef(false);
+  const lastAutoIntakeTriggerIdRef = useRef<string | null>(null);
+  const [providerAvailability, setProviderAvailability] = React.useState<Record<Provider, ProviderAvailability>>(() => {
+    const cached = readCliAvailability();
+
+    return {
+      claude: cached.claude ?? DEFAULT_PROVIDER_AVAILABILITY.claude,
+      cursor: cached.cursor ?? DEFAULT_PROVIDER_AVAILABILITY.cursor,
+      codex: cached.codex ?? DEFAULT_PROVIDER_AVAILABILITY.codex,
+      gemini: cached.gemini ?? DEFAULT_PROVIDER_AVAILABILITY.gemini,
+    };
+  });
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadProviderAvailability = async () => {
+      const checks: Array<{ provider: Provider; endpoint: string; fallbackCommand: string }> = [
+        { provider: 'claude', endpoint: '/api/cli/claude/status', fallbackCommand: 'claude' },
+        { provider: 'cursor', endpoint: '/api/cli/cursor/status', fallbackCommand: 'agent' },
+        { provider: 'codex', endpoint: '/api/cli/codex/status', fallbackCommand: 'codex' },
+        { provider: 'gemini', endpoint: '/api/cli/gemini/status', fallbackCommand: 'gemini' },
+      ];
+
+      const results = await Promise.all(checks.map(async ({ provider: nextProvider, endpoint, fallbackCommand }) => {
+        try {
+          const response = await authenticatedFetch(endpoint);
+          const data = await response.json();
+          return [nextProvider, {
+            cliAvailable: data.cliAvailable !== false,
+            cliCommand: data.cliCommand || fallbackCommand,
+            installHint: data.installHint || null,
+          }] as const;
+        } catch {
+          return [nextProvider, {
+            cliAvailable: true,
+            cliCommand: fallbackCommand,
+            installHint: null,
+          }] as const;
+        }
+      }));
+
+      if (cancelled) {
+        return;
+      }
+
+      const nextAvailability = Object.fromEntries(results) as Record<Provider, ProviderAvailability>;
+      for (const [nextProvider, availability] of Object.entries(nextAvailability) as Array<[Provider, ProviderAvailability]>) {
+        writeCliAvailability(nextProvider, {
+          cliAvailable: availability.cliAvailable,
+          cliCommand: availability.cliCommand ?? null,
+          installHint: availability.installHint ?? null,
+        });
+      }
+
+      setProviderAvailability(nextAvailability);
+    };
+
+    void loadProviderAvailability();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (providerAvailability[provider]?.cliAvailable === false) {
+      const fallbackProvider = (['claude', 'cursor', 'codex', 'gemini'] as const).find(
+        (candidate) => providerAvailability[candidate]?.cliAvailable !== false,
+      );
+
+      if (fallbackProvider && fallbackProvider !== provider) {
+        setProvider(fallbackProvider);
+        localStorage.setItem('selected-provider', fallbackProvider);
+      }
+    }
+  }, [provider, providerAvailability, setProvider]);
+
+  useEffect(() => {
+    const triggerId = getAutoIntakeTriggerId(pendingAutoIntake);
+    if (triggerId && lastAutoIntakeTriggerIdRef.current !== triggerId) {
+      autoIntakeTriggeredRef.current = false;
+      lastAutoIntakeTriggerIdRef.current = triggerId;
+    }
+
+    if (!pendingAutoIntake) {
+      autoIntakeTriggeredRef.current = false;
+      return;
+    }
+
     if (
-      !pendingAutoIntake ||
       autoIntakeTriggeredRef.current ||
       !selectedProject ||
       selectedSession ||
@@ -243,7 +354,7 @@ function ChatInterface({
       chatMessages.length > 0
     ) return;
 
-    const intakeKey = `intake_triggered_${selectedProject.name}`;
+    const intakeKey = getAutoIntakeStorageKey(selectedProject.name, triggerId);
     if (sessionStorage.getItem(intakeKey)) {
       clearPendingAutoIntake?.();
       return;
@@ -251,10 +362,28 @@ function ChatInterface({
 
     autoIntakeTriggeredRef.current = true;
     sessionStorage.setItem(intakeKey, 'true');
+
+    const autoIntakePrompt = getAutoIntakePrompt(pendingAutoIntake);
+
+    if (autoIntakePrompt) {
+      clearPendingAutoIntake?.();
+      submitProgrammaticInput(autoIntakePrompt);
+      return;
+    }
+
     clearPendingAutoIntake?.();
 
     setIntakeGreeting(INTAKE_GREETING);
-  }, [pendingAutoIntake, selectedProject, selectedSession, isLoading, chatMessages.length, clearPendingAutoIntake, setIntakeGreeting]);
+  }, [
+    pendingAutoIntake,
+    selectedProject,
+    selectedSession,
+    isLoading,
+    chatMessages.length,
+    clearPendingAutoIntake,
+    setIntakeGreeting,
+    submitProgrammaticInput,
+  ]);
 
   useEffect(() => {
     if (!isLoading || !canAbortSession) {
@@ -383,6 +512,7 @@ function ChatInterface({
           showThinking={showThinking}
           selectedProject={selectedProject}
           isLoading={isLoading}
+          providerAvailability={providerAvailability}
         />
 
         <div className="px-2 sm:px-4 max-w-5xl mx-auto w-full">

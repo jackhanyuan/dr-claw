@@ -159,6 +159,9 @@
     "title": "选择您的 AI 助手",
     "description": "选择一个供应商以开始新对话",
     "selectModel": "选择模型",
+    "notInstalled": "未安装",
+    "installRequired": "{{provider}} CLI 未安装",
+    "unavailableHint": "当前机器上有些 CLI 后端不可用。请先在 Settings 中安装缺失工具，再使用这些选项。",
     "providerInfo": {
       "anthropic": "Anthropic",
       "openai": "OpenAI",

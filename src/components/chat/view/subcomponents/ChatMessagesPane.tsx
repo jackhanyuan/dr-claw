@@ -8,6 +8,7 @@ import ProviderSelectionEmptyState from './ProviderSelectionEmptyState';
 import SessionProviderLogo from '../../../SessionProviderLogo';
 import { Markdown } from './Markdown';
 import type { ChatMessage } from '../../types/types';
+import type { ProviderAvailability } from '../../types/types';
 import type { Project, ProjectSession, SessionProvider } from '../../../../types/app';
 import AssistantThinkingIndicator from './AssistantThinkingIndicator';
 import { getIntrinsicMessageKey } from '../../utils/messageKeys';
@@ -55,6 +56,7 @@ interface ChatMessagesPaneProps {
   selectedProject: Project;
   isLoading: boolean;
   intakeGreeting?: string | null;
+  providerAvailability: Record<SessionProvider, ProviderAvailability>;
 }
 
 export default function ChatMessagesPane({
@@ -99,6 +101,7 @@ export default function ChatMessagesPane({
   selectedProject,
   isLoading,
   intakeGreeting,
+  providerAvailability,
 }: ChatMessagesPaneProps) {
   const { t } = useTranslation('chat');
   const messageKeyMapRef = useRef<WeakMap<ChatMessage, string>>(new WeakMap());
@@ -167,6 +170,7 @@ export default function ChatMessagesPane({
             setGeminiModel={setGeminiModel}
             projectName={selectedProject.name}
             setInput={setInput}
+            providerAvailability={providerAvailability}
           />
           {intakeGreeting && (
             <div className="flex flex-col w-full mb-6 mt-4">

@@ -159,6 +159,9 @@
     "title": "AI 어시스턴트 선택",
     "description": "새 대화를 시작할 프로바이더를 선택하세요",
     "selectModel": "모델 선택",
+    "notInstalled": "설치되지 않음",
+    "installRequired": "{{provider}} CLI가 설치되지 않았습니다",
+    "unavailableHint": "이 기기에서는 일부 CLI 백엔드를 사용할 수 없습니다. Settings에서 누락된 도구를 먼저 설치하세요.",
     "providerInfo": {
       "anthropic": "by Anthropic",
       "openai": "by OpenAI",

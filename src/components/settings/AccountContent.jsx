@@ -11,6 +11,7 @@ const agentConfig = {
   claude: {
     name: 'Claude',
     description: 'Anthropic Claude AI assistant',
+    cliCommand: 'claude',
     bgClass: 'bg-blue-50 dark:bg-blue-900/20',
     borderClass: 'border-blue-200 dark:border-blue-800',
     textClass: 'text-blue-900 dark:text-blue-100',
@@ -20,6 +21,7 @@ const agentConfig = {
   cursor: {
     name: 'Cursor',
     description: 'Cursor AI-powered code editor',
+    cliCommand: 'agent',
     bgClass: 'bg-purple-50 dark:bg-purple-900/20',
     borderClass: 'border-purple-200 dark:border-purple-800',
     textClass: 'text-purple-900 dark:text-purple-100',
@@ -29,6 +31,7 @@ const agentConfig = {
   codex: {
     name: 'Codex',
     description: 'OpenAI Codex AI assistant',
+    cliCommand: 'codex',
     bgClass: 'bg-gray-100 dark:bg-gray-800/50',
     borderClass: 'border-gray-300 dark:border-gray-600',
     textClass: 'text-gray-900 dark:text-gray-100',
@@ -38,6 +41,7 @@ const agentConfig = {
   gemini: {
     name: 'Gemini',
     description: 'Google Gemini AI CLI assistant',
+    cliCommand: 'gemini',
     bgClass: 'bg-blue-50 dark:bg-blue-900/20',
     borderClass: 'border-blue-200 dark:border-blue-800',
     textClass: 'text-blue-900 dark:text-blue-100',
@@ -49,6 +53,8 @@ const agentConfig = {
 export default function AccountContent({ agent, authStatus, onLogin }) {
   const { t } = useTranslation('settings');
   const config = agentConfig[agent];
+  const cliMissing = authStatus?.cliAvailable === false;
+  const installHint = authStatus?.installHint;
 
   const [customApiUrl, setCustomApiUrl] = useState('');
   const [customApiToken, setCustomApiToken] = useState('');
@@ -100,6 +106,8 @@ export default function AccountContent({ agent, authStatus, onLogin }) {
               <div className={`text-sm ${config.subtextClass}`}>
                 {authStatus?.loading ? (
                   t('agents.authStatus.checkingAuth')
+                ) : cliMissing ? (
+                  t('agents.authStatus.cliMissing', { command: authStatus?.cliCommand || config.cliCommand })
                 ) : authStatus?.authenticated ? (
                   t('agents.authStatus.loggedInAs', { email: authStatus.email || t('agents.authStatus.authenticatedUser') })
                 ) : (
@@ -111,6 +119,10 @@ export default function AccountContent({ agent, authStatus, onLogin }) {
               {authStatus?.loading ? (
                 <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-800">
                   {t('agents.authStatus.checking')}
+                </Badge>
+              ) : cliMissing ? (
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                  {t('agents.authStatus.installRequired')}
                 </Badge>
               ) : authStatus?.authenticated ? (
                 <Badge variant="success" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
@@ -133,6 +145,8 @@ export default function AccountContent({ agent, authStatus, onLogin }) {
                 <div className={`text-sm ${config.subtextClass}`}>
                   {authStatus?.authenticated
                     ? t('agents.login.reAuthDescription')
+                    : cliMissing
+                      ? t('agents.login.installDescription', { agent: config.name })
                     : t('agents.login.description', { agent: config.name })}
                 </div>
               </div>
@@ -140,12 +154,23 @@ export default function AccountContent({ agent, authStatus, onLogin }) {
                 onClick={onLogin}
                 className={`${config.buttonClass} text-white`}
                 size="sm"
+                disabled={authStatus?.loading || cliMissing}
               >
                 <LogIn className="w-4 h-4 mr-2" />
                 {authStatus?.authenticated ? t('agents.login.reLoginButton') : t('agents.login.button')}
               </Button>
             </div>
           </div>
+
+          {cliMissing && installHint && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+                <div className="font-medium">{t('agents.install.title')}</div>
+                <div className="mt-1">{installHint}</div>
+                <div className="mt-2 font-mono text-xs">{authStatus?.cliCommand || config.cliCommand}</div>
+              </div>
+            </div>
+          )}
 
           {agent === 'claude' && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -191,7 +216,7 @@ export default function AccountContent({ agent, authStatus, onLogin }) {
             </div>
           )}
 
-          {authStatus?.error && (
+          {authStatus?.error && !cliMissing && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
               <div className="text-sm text-red-600 dark:text-red-400">
                 {t('agents.error', { error: authStatus.error })}

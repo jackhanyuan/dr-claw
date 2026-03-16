@@ -290,8 +290,10 @@
       "checking": "확인 중...",
       "connected": "연결됨",
       "notConnected": "연결되지 않음",
+      "installRequired": "설치 필요",
       "disconnected": "연결 끊김",
       "checkingAuth": "인증 상태 확인 중...",
+      "cliMissing": "{{command}} 이(가) 설치되지 않음",
       "loggedInAs": "{{email}}(으)로 로그인됨",
       "authenticatedUser": "인증된 사용자"
     },
@@ -304,6 +306,9 @@
       },
       "codex": {
         "description": "OpenAI Codex AI 어시스턴트"
+      },
+      "gemini": {
+        "description": "Google Gemini AI CLI 어시스턴트"
       }
     },
     "connectionStatus": "연결 상태",
@@ -311,9 +316,13 @@
       "title": "로그인",
       "reAuthenticate": "재인증",
       "description": "AI 기능을 활성화하려면 {{agent}} 계정에 로그인하세요",
+      "installDescription": "로그인하기 전에 {{agent}} CLI를 먼저 설치하세요",
       "reAuthDescription": "다른 계정으로 로그인하거나 자격 증명을 새로고침하세요",
       "button": "로그인",
       "reLoginButton": "재로그인"
+    },
+    "install": {
+      "title": "누락된 CLI 의존성"
     },
     "error": "오류: {{error}}"
   },

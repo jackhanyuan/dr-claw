@@ -10,6 +10,7 @@ import GitSettings from './GitSettings';
 import LoginModal from './LoginModal';
 import { authenticatedFetch, api } from '../utils/api';
 import { isTelemetryEnabled, setTelemetryEnabled } from '../utils/telemetry';
+import { writeCliAvailability } from '../utils/cliAvailability';
 
 // New settings components
 import AgentListItem from './settings/AgentListItem';
@@ -124,26 +125,49 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
   const [claudeAuthStatus, setClaudeAuthStatus] = useState({
     authenticated: false,
     email: null,
+    cliAvailable: true,
+    cliCommand: 'claude',
+    installHint: null,
     loading: true,
     error: null
   });
   const [cursorAuthStatus, setCursorAuthStatus] = useState({
     authenticated: false,
     email: null,
+    cliAvailable: true,
+    cliCommand: 'agent',
+    installHint: null,
     loading: true,
     error: null
   });
   const [codexAuthStatus, setCodexAuthStatus] = useState({
     authenticated: false,
     email: null,
+    cliAvailable: true,
+    cliCommand: 'codex',
+    installHint: null,
     loading: true,
     error: null
   });
   const [geminiAuthStatus, setGeminiAuthStatus] = useState({
     authenticated: false,
     email: null,
+    cliAvailable: true,
+    cliCommand: 'gemini',
+    installHint: null,
     loading: true,
     error: null
+  });
+
+  const buildDefaultAuthState = (overrides = {}) => ({
+    authenticated: false,
+    email: null,
+    cliAvailable: true,
+    cliCommand: null,
+    installHint: null,
+    loading: false,
+    error: null,
+    ...overrides
   });
 
   // Common tool patterns for Claude
@@ -653,25 +677,29 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
         setClaudeAuthStatus({
           authenticated: data.authenticated,
           email: data.email,
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'claude',
+          installHint: data.installHint || null,
           loading: false,
           error: data.error || null
         });
-      } else {
-        setClaudeAuthStatus({
-          authenticated: false,
-          email: null,
-          loading: false,
-          error: 'Failed to check authentication status'
+        writeCliAvailability('claude', {
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'claude',
+          installHint: data.installHint || null,
         });
+      } else {
+        setClaudeAuthStatus(buildDefaultAuthState({
+          cliCommand: 'claude',
+          error: 'Failed to check authentication status'
+        }));
       }
     } catch (error) {
       console.error('Error checking Claude auth status:', error);
-      setClaudeAuthStatus({
-        authenticated: false,
-        email: null,
-        loading: false,
+      setClaudeAuthStatus(buildDefaultAuthState({
+        cliCommand: 'claude',
         error: error.message
-      });
+      }));
     }
   };
 
@@ -684,25 +712,29 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
         setCursorAuthStatus({
           authenticated: data.authenticated,
           email: data.email,
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'agent',
+          installHint: data.installHint || null,
           loading: false,
           error: data.error || null
         });
-      } else {
-        setCursorAuthStatus({
-          authenticated: false,
-          email: null,
-          loading: false,
-          error: 'Failed to check authentication status'
+        writeCliAvailability('cursor', {
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'agent',
+          installHint: data.installHint || null,
         });
+      } else {
+        setCursorAuthStatus(buildDefaultAuthState({
+          cliCommand: 'agent',
+          error: 'Failed to check authentication status'
+        }));
       }
     } catch (error) {
       console.error('Error checking Cursor auth status:', error);
-      setCursorAuthStatus({
-        authenticated: false,
-        email: null,
-        loading: false,
+      setCursorAuthStatus(buildDefaultAuthState({
+        cliCommand: 'agent',
         error: error.message
-      });
+      }));
     }
   };
 
@@ -715,25 +747,29 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
         setCodexAuthStatus({
           authenticated: data.authenticated,
           email: data.email,
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'codex',
+          installHint: data.installHint || null,
           loading: false,
           error: data.error || null
         });
-      } else {
-        setCodexAuthStatus({
-          authenticated: false,
-          email: null,
-          loading: false,
-          error: 'Failed to check authentication status'
+        writeCliAvailability('codex', {
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'codex',
+          installHint: data.installHint || null,
         });
+      } else {
+        setCodexAuthStatus(buildDefaultAuthState({
+          cliCommand: 'codex',
+          error: 'Failed to check authentication status'
+        }));
       }
     } catch (error) {
       console.error('Error checking Codex auth status:', error);
-      setCodexAuthStatus({
-        authenticated: false,
-        email: null,
-        loading: false,
+      setCodexAuthStatus(buildDefaultAuthState({
+        cliCommand: 'codex',
         error: error.message
-      });
+      }));
     }
   };
 
@@ -746,47 +782,55 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
         setGeminiAuthStatus({
           authenticated: data.authenticated,
           email: data.email,
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'gemini',
+          installHint: data.installHint || null,
           loading: false,
           error: data.error || null
         });
-      } else {
-        setGeminiAuthStatus({
-          authenticated: false,
-          email: null,
-          loading: false,
-          error: 'Failed to check authentication status'
+        writeCliAvailability('gemini', {
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'gemini',
+          installHint: data.installHint || null,
         });
+      } else {
+        setGeminiAuthStatus(buildDefaultAuthState({
+          cliCommand: 'gemini',
+          error: 'Failed to check authentication status'
+        }));
       }
     } catch (error) {
       console.error('Error checking Gemini auth status:', error);
-      setGeminiAuthStatus({
-        authenticated: false,
-        email: null,
-        loading: false,
+      setGeminiAuthStatus(buildDefaultAuthState({
+        cliCommand: 'gemini',
         error: error.message
-      });
+      }));
     }
   };
 
   const handleClaudeLogin = () => {
+    if (claudeAuthStatus.cliAvailable === false) return;
     setLoginProvider('claude');
     setSelectedProject(projects?.[0] || { name: 'default', fullPath: process.cwd() });
     setShowLoginModal(true);
   };
 
   const handleCursorLogin = () => {
+    if (cursorAuthStatus.cliAvailable === false) return;
     setLoginProvider('cursor');
     setSelectedProject(projects?.[0] || { name: 'default', fullPath: process.cwd() });
     setShowLoginModal(true);
   };
 
   const handleCodexLogin = () => {
+    if (codexAuthStatus.cliAvailable === false) return;
     setLoginProvider('codex');
     setSelectedProject(projects?.[0] || { name: 'default', fullPath: process.cwd() });
     setShowLoginModal(true);
   };
 
   const handleGeminiLogin = () => {
+    if (geminiAuthStatus.cliAvailable === false) return;
     setLoginProvider('gemini');
     setSelectedProject(projects?.[0] || { name: 'default', fullPath: process.cwd() });
     setShowLoginModal(true);
@@ -2193,6 +2237,20 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
           loginProvider === 'cursor' ? cursorAuthStatus.authenticated :
           loginProvider === 'codex' ? codexAuthStatus.authenticated :
           false
+        }
+        cliAvailable={
+          loginProvider === 'claude' ? claudeAuthStatus.cliAvailable !== false :
+          loginProvider === 'cursor' ? cursorAuthStatus.cliAvailable !== false :
+          loginProvider === 'codex' ? codexAuthStatus.cliAvailable !== false :
+          loginProvider === 'gemini' ? geminiAuthStatus.cliAvailable !== false :
+          true
+        }
+        installHint={
+          loginProvider === 'claude' ? claudeAuthStatus.installHint :
+          loginProvider === 'cursor' ? cursorAuthStatus.installHint :
+          loginProvider === 'codex' ? codexAuthStatus.installHint :
+          loginProvider === 'gemini' ? geminiAuthStatus.installHint :
+          null
         }
       />
     </div>

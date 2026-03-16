@@ -685,9 +685,11 @@ async function getProjects(userId, progressCallback = null) {
       // C. If it's NOT in DB and OUTSIDE the root -> IGNORE (avoid cluttering with external Claude projects)
       // D. If it's in DB but belongs to someone else -> HIDDEN
 
+      const isManuallyAdded = !!(dbEntry?.metadata?.manuallyAdded || config[entry.name]?.manuallyAdded);
+
       if (dbEntry) {
         if (dbEntry.user_id === userId) {
-          if (await isPathWithinWorkspaceRoots(actualDir, visibleWorkspaceRoots)) {
+          if (isManuallyAdded || await isPathWithinWorkspaceRoots(actualDir, visibleWorkspaceRoots)) {
             discoveredDirectories.push({ entry, actualProjectDir: actualDir, dbEntry });
           } else {
             console.log(`[projects] Skipping external claimed project: ${entry.name} at ${actualDir}`);
@@ -708,9 +710,11 @@ async function getProjects(userId, progressCallback = null) {
       if (!projectConfig?.originalPath) continue;
 
       const dbEntry = globalProjectMap.get(projectName);
+      const isManuallyAdded = !!projectConfig.manuallyAdded;
+
       if (!dbEntry || !dbEntry.user_id) {
-        // Skip projects outside the workspace root
-        if (!await isPathWithinWorkspaceRoots(projectConfig.originalPath, visibleWorkspaceRoots)) {
+        // Skip projects outside the workspace root unless the user explicitly added them.
+        if (!isManuallyAdded && !await isPathWithinWorkspaceRoots(projectConfig.originalPath, visibleWorkspaceRoots)) {
           console.log(`[projects] Skipping external Claude config project: ${projectName} at ${projectConfig.originalPath}`);
           continue;
         }
@@ -732,10 +736,11 @@ async function getProjects(userId, progressCallback = null) {
       // If we're filtering by userId, only include projects that belong to them.
       // If userId is null (timer/broadcast), include everything.
       const isVisible = !userId || dbEntry.user_id === userId;
+      const isManuallyAdded = !!dbEntry.metadata?.manuallyAdded;
 
       if (isVisible) {
-        // Also filter DB projects by workspace root
-        if (!await isPathWithinWorkspaceRoots(dbEntry.path, visibleWorkspaceRoots)) {
+        // Also filter DB projects by workspace root unless the user explicitly added them.
+        if (!isManuallyAdded && !await isPathWithinWorkspaceRoots(dbEntry.path, visibleWorkspaceRoots)) {
           console.log(`[projects] Skipping external DB project: ${dbEntry.id} at ${dbEntry.path}`);
           continue;
         }

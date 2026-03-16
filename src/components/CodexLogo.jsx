@@ -9,6 +9,9 @@ const CodexLogo = ({ className = 'w-5 h-5' }) => {
       src={isDarkMode ? "/icons/codex-white.svg" : "/icons/codex.svg"}
       alt="Codex"
       className={className}
+      loading="eager"
+      decoding="sync"
+      fetchPriority="high"
     />
   );
 };

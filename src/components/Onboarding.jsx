@@ -10,6 +10,7 @@ import LoginModal from './LoginModal';
 import { authenticatedFetch } from '../utils/api';
 import { IS_PLATFORM } from '../constants/config';
 import { isTelemetryEnabled, setTelemetryEnabled } from '../utils/telemetry';
+import { writeCliAvailability } from '../utils/cliAvailability';
 import betaAgreementTextZh from '../../docs/internal-beta-user-agreement.zh-CN.md?raw';
 import betaAgreementTextEn from '../../docs/internal-beta-user-agreement.en-US.md?raw';
 
@@ -32,6 +33,9 @@ const Onboarding = ({ onComplete }) => {
   const [claudeAuthStatus, setClaudeAuthStatus] = useState({
     authenticated: false,
     email: null,
+    cliAvailable: true,
+    cliCommand: 'claude',
+    installHint: null,
     loading: true,
     error: null
   });
@@ -39,6 +43,9 @@ const Onboarding = ({ onComplete }) => {
   const [cursorAuthStatus, setCursorAuthStatus] = useState({
     authenticated: false,
     email: null,
+    cliAvailable: true,
+    cliCommand: 'agent',
+    installHint: null,
     loading: true,
     error: null
   });
@@ -46,6 +53,9 @@ const Onboarding = ({ onComplete }) => {
   const [codexAuthStatus, setCodexAuthStatus] = useState({
     authenticated: false,
     email: null,
+    cliAvailable: true,
+    cliCommand: 'codex',
+    installHint: null,
     loading: true,
     error: null
   });
@@ -53,8 +63,22 @@ const Onboarding = ({ onComplete }) => {
   const [geminiAuthStatus, setGeminiAuthStatus] = useState({
     authenticated: false,
     email: null,
+    cliAvailable: true,
+    cliCommand: 'gemini',
+    installHint: null,
     loading: true,
     error: null
+  });
+
+  const buildDefaultAuthState = (overrides = {}) => ({
+    authenticated: false,
+    email: null,
+    cliAvailable: true,
+    cliCommand: null,
+    installHint: null,
+    loading: false,
+    error: null,
+    ...overrides
   });
 
   const prevActiveLoginProviderRef = useRef(undefined);
@@ -82,25 +106,29 @@ const Onboarding = ({ onComplete }) => {
         setClaudeAuthStatus({
           authenticated: data.authenticated,
           email: data.email,
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'claude',
+          installHint: data.installHint || null,
           loading: false,
           error: data.error || null
         });
-      } else {
-        setClaudeAuthStatus({
-          authenticated: false,
-          email: null,
-          loading: false,
-          error: 'Failed to check authentication status'
+        writeCliAvailability('claude', {
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'claude',
+          installHint: data.installHint || null,
         });
+      } else {
+        setClaudeAuthStatus(buildDefaultAuthState({
+          cliCommand: 'claude',
+          error: 'Failed to check authentication status'
+        }));
       }
     } catch (error) {
       console.error('Error checking Claude auth status:', error);
-      setClaudeAuthStatus({
-        authenticated: false,
-        email: null,
-        loading: false,
+      setClaudeAuthStatus(buildDefaultAuthState({
+        cliCommand: 'claude',
         error: error.message
-      });
+      }));
     }
   };
 
@@ -112,25 +140,29 @@ const Onboarding = ({ onComplete }) => {
         setCursorAuthStatus({
           authenticated: data.authenticated,
           email: data.email,
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'agent',
+          installHint: data.installHint || null,
           loading: false,
           error: data.error || null
         });
-      } else {
-        setCursorAuthStatus({
-          authenticated: false,
-          email: null,
-          loading: false,
-          error: 'Failed to check authentication status'
+        writeCliAvailability('cursor', {
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'agent',
+          installHint: data.installHint || null,
         });
+      } else {
+        setCursorAuthStatus(buildDefaultAuthState({
+          cliCommand: 'agent',
+          error: 'Failed to check authentication status'
+        }));
       }
     } catch (error) {
       console.error('Error checking Cursor auth status:', error);
-      setCursorAuthStatus({
-        authenticated: false,
-        email: null,
-        loading: false,
+      setCursorAuthStatus(buildDefaultAuthState({
+        cliCommand: 'agent',
         error: error.message
-      });
+      }));
     }
   };
 
@@ -142,25 +174,29 @@ const Onboarding = ({ onComplete }) => {
         setCodexAuthStatus({
           authenticated: data.authenticated,
           email: data.email,
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'codex',
+          installHint: data.installHint || null,
           loading: false,
           error: data.error || null
         });
-      } else {
-        setCodexAuthStatus({
-          authenticated: false,
-          email: null,
-          loading: false,
-          error: 'Failed to check authentication status'
+        writeCliAvailability('codex', {
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'codex',
+          installHint: data.installHint || null,
         });
+      } else {
+        setCodexAuthStatus(buildDefaultAuthState({
+          cliCommand: 'codex',
+          error: 'Failed to check authentication status'
+        }));
       }
     } catch (error) {
       console.error('Error checking Codex auth status:', error);
-      setCodexAuthStatus({
-        authenticated: false,
-        email: null,
-        loading: false,
+      setCodexAuthStatus(buildDefaultAuthState({
+        cliCommand: 'codex',
         error: error.message
-      });
+      }));
     }
   };
 
@@ -172,25 +208,29 @@ const Onboarding = ({ onComplete }) => {
         setGeminiAuthStatus({
           authenticated: data.authenticated,
           email: data.email,
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'gemini',
+          installHint: data.installHint || null,
           loading: false,
           error: data.error || null
         });
-      } else {
-        setGeminiAuthStatus({
-          authenticated: false,
-          email: null,
-          loading: false,
-          error: 'Failed to check authentication status'
+        writeCliAvailability('gemini', {
+          cliAvailable: data.cliAvailable !== false,
+          cliCommand: data.cliCommand || 'gemini',
+          installHint: data.installHint || null,
         });
+      } else {
+        setGeminiAuthStatus(buildDefaultAuthState({
+          cliCommand: 'gemini',
+          error: 'Failed to check authentication status'
+        }));
       }
     } catch (error) {
       console.error('Error checking Gemini auth status:', error);
-      setGeminiAuthStatus({
-        authenticated: false,
-        email: null,
-        loading: false,
+      setGeminiAuthStatus(buildDefaultAuthState({
+        cliCommand: 'gemini',
         error: error.message
-      });
+      }));
     }
   };
 
@@ -403,6 +443,8 @@ const Onboarding = ({ onComplete }) => {
               <div className={`border rounded-lg p-4 transition-colors ${
                 claudeAuthStatus.authenticated
                   ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                  : claudeAuthStatus.cliAvailable === false
+                    ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800'
                   : 'border-border bg-card'
               }`}>
                 <div className="flex items-center justify-between">
@@ -417,11 +459,12 @@ const Onboarding = ({ onComplete }) => {
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {claudeAuthStatus.loading ? 'Checking...' :
+                         claudeAuthStatus.cliAvailable === false ? 'Install Claude CLI first' :
                          claudeAuthStatus.authenticated ? claudeAuthStatus.email || 'Connected' : 'Not connected'}
                       </div>
                     </div>
                   </div>
-                  {!claudeAuthStatus.authenticated && !claudeAuthStatus.loading && (
+                  {!claudeAuthStatus.authenticated && !claudeAuthStatus.loading && claudeAuthStatus.cliAvailable !== false && (
                     <button
                       onClick={handleClaudeLogin}
                       className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors"
@@ -436,6 +479,8 @@ const Onboarding = ({ onComplete }) => {
               <div className={`border rounded-lg p-4 transition-colors ${
                 geminiAuthStatus.authenticated
                   ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800'
+                  : geminiAuthStatus.cliAvailable === false
+                    ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800'
                   : 'border-border bg-card'
               }`}>
                 <div className="flex items-center justify-between">
@@ -450,11 +495,12 @@ const Onboarding = ({ onComplete }) => {
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {geminiAuthStatus.loading ? 'Checking...' :
+                         geminiAuthStatus.cliAvailable === false ? 'Install Gemini CLI first' :
                          geminiAuthStatus.authenticated ? geminiAuthStatus.email || 'Connected' : 'Not connected'}
                       </div>
                     </div>
                   </div>
-                  {!geminiAuthStatus.authenticated && !geminiAuthStatus.loading && (
+                  {!geminiAuthStatus.authenticated && !geminiAuthStatus.loading && geminiAuthStatus.cliAvailable !== false && (
                     <button
                       onClick={handleGeminiLogin}
                       className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors"
@@ -608,6 +654,20 @@ const Onboarding = ({ onComplete }) => {
           project={selectedProject}
           onComplete={handleLoginComplete}
           isOnboarding={true}
+          cliAvailable={
+            activeLoginProvider === 'claude' ? claudeAuthStatus.cliAvailable !== false :
+            activeLoginProvider === 'gemini' ? geminiAuthStatus.cliAvailable !== false :
+            activeLoginProvider === 'cursor' ? cursorAuthStatus.cliAvailable !== false :
+            activeLoginProvider === 'codex' ? codexAuthStatus.cliAvailable !== false :
+            true
+          }
+          installHint={
+            activeLoginProvider === 'claude' ? claudeAuthStatus.installHint :
+            activeLoginProvider === 'gemini' ? geminiAuthStatus.installHint :
+            activeLoginProvider === 'cursor' ? cursorAuthStatus.installHint :
+            activeLoginProvider === 'codex' ? codexAuthStatus.installHint :
+            null
+          }
         />
       )}
     </>

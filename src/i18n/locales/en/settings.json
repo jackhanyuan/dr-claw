@@ -290,8 +290,10 @@
       "checking": "Checking...",
       "connected": "Connected",
       "notConnected": "Not connected",
+      "installRequired": "Install required",
       "disconnected": "Disconnected",
       "checkingAuth": "Checking authentication status...",
+      "cliMissing": "{{command}} is not installed",
       "loggedInAs": "Logged in as {{email}}",
       "authenticatedUser": "authenticated user"
     },
@@ -314,9 +316,13 @@
       "title": "Login",
       "reAuthenticate": "Re-authenticate",
       "description": "Sign in to your {{agent}} account to enable AI features",
+      "installDescription": "Install the {{agent}} CLI before signing in",
       "reAuthDescription": "Sign in with a different account or refresh credentials",
       "button": "Login",
       "reLoginButton": "Re-login"
+    },
+    "install": {
+      "title": "Missing CLI dependency"
     },
     "error": "Error: {{error}}"
   },
