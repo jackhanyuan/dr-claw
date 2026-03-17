@@ -11,7 +11,7 @@ import { StreamLanguage } from '@codemirror/language';
 import { EditorView, showPanel, ViewPlugin } from '@codemirror/view';
 import { unifiedMergeView, getChunks } from '@codemirror/merge';
 import { showMinimap } from '@replit/codemirror-minimap';
-import { X, Save, Download, Maximize2, Minimize2, Settings as SettingsIcon, FileText } from 'lucide-react';
+import { X, Save, Download, Maximize2, Minimize2, Settings as SettingsIcon, FileText, MessageSquarePlus } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -149,8 +149,8 @@ const UNSUPPORTED_EXTENSIONS = new Set([
   'bin', 'exe', 'dll', 'npy', 'npz', 'pkl', 'pt', 'pth', 'ckpt', 'onnx',
 ]);
 
-function CodeEditor({ file, onClose, projectPath, isSidebar = false, isExpanded = false, onToggleExpand = null, onPopOut = null }) {
-  const { t } = useTranslation('codeEditor');
+function CodeEditor({ file, onClose, projectPath, selectedProject = null, onStartWorkspaceQa = null, isSidebar = false, isExpanded = false, onToggleExpand = null, onPopOut = null }) {
+  const { t } = useTranslation(['codeEditor', 'common']);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -191,6 +191,22 @@ function CodeEditor({ file, onClose, projectPath, isSidebar = false, isExpanded 
   const isUnsupported = useMemo(() => UNSUPPORTED_EXTENSIONS.has(fileExt), [fileExt]);
   const isBinary = isPdf || isImage;
   const [blobUrl, setBlobUrl] = useState(null);
+
+  const canStartWorkspaceQa = Boolean(selectedProject && onStartWorkspaceQa);
+
+  const handleAskAboutFile = () => {
+    if (!selectedProject || !onStartWorkspaceQa) {
+      return;
+    }
+
+    onStartWorkspaceQa(
+      selectedProject,
+      t('common:fileTree.askAboutFilePrompt', {
+        name: file.name,
+        path: file.path,
+      }),
+    );
+  };
 
   // Reset disambiguation state when file changes
   useEffect(() => {
@@ -853,6 +869,16 @@ function CodeEditor({ file, onClose, projectPath, isSidebar = false, isExpanded 
           </div>
 
           <div className="flex items-center gap-0.5 md:gap-1 flex-shrink-0">
+            {canStartWorkspaceQa && (
+              <button
+                onClick={handleAskAboutFile}
+                className="p-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 min-w-[36px] min-h-[36px] md:min-w-0 md:min-h-0 flex items-center justify-center"
+                title={t('actions.askAboutFile')}
+              >
+                <MessageSquarePlus className="w-4 h-4" />
+              </button>
+            )}
+
             {!isBinary && !isUnsupported && isMarkdownFile && (
               <button
                 onClick={() => setMarkdownPreview(!markdownPreview)}

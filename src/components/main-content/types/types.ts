@@ -109,6 +109,8 @@ export interface EditorSidebarProps {
   onCloseEditor: () => void;
   onToggleEditorExpand: () => void;
   projectPath?: string;
+  selectedProject?: Project | null;
+  onStartWorkspaceQa?: (project: Project, prompt: string) => void;
   fillSpace?: boolean;
 }
 

@@ -14,6 +14,8 @@ export default function EditorSidebar({
   onCloseEditor,
   onToggleEditorExpand,
   projectPath,
+  selectedProject,
+  onStartWorkspaceQa,
   fillSpace,
 }: EditorSidebarProps) {
   const [poppedOut, setPoppedOut] = useState(false);
@@ -31,6 +33,8 @@ export default function EditorSidebar({
           onCloseEditor();
         }}
         projectPath={projectPath}
+        selectedProject={selectedProject}
+        onStartWorkspaceQa={onStartWorkspaceQa}
         isSidebar={false}
       />
     );
@@ -59,6 +63,8 @@ export default function EditorSidebar({
           file={editingFile}
           onClose={onCloseEditor}
           projectPath={projectPath}
+          selectedProject={selectedProject}
+          onStartWorkspaceQa={onStartWorkspaceQa}
           isSidebar
           isExpanded={editorExpanded}
           onToggleExpand={onToggleEditorExpand}

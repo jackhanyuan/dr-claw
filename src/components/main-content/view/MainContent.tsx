@@ -274,6 +274,8 @@ function MainContent({
           onCloseEditor={handleCloseEditor}
           onToggleEditorExpand={handleToggleEditorExpand}
           projectPath={selectedProject.path}
+          selectedProject={selectedProject}
+          onStartWorkspaceQa={onStartWorkspaceQa}
           fillSpace={false}
         />
       </div>

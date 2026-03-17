@@ -14,6 +14,7 @@
     "showingChanges": "변경사항 표시"
   },
   "actions": {
+    "askAboutFile": "이 파일에 대해 묻기",
     "download": "파일 다운로드",
     "save": "저장",
     "saving": "저장 중...",
