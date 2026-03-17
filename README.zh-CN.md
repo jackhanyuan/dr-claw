@@ -9,7 +9,7 @@
 <img src="https://img.shields.io/github/stars/OpenLAIR/dr-claw?style=for-the-badge&logo=github" alt="GitHub Stars" />
 </a>
 <a href="https://github.com/OpenLAIR/dr-claw/blob/main/LICENSE">
-<img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=for-the-badge" alt="License" />
+<img src="https://img.shields.io/badge/License-GPL--3.0%20%2B%20AGPL--3.0-blue?style=for-the-badge" alt="License: GPL-3.0 + AGPL-3.0" />
 </a>
 <a href="https://join.slack.com/t/vibe-lab-group/shared_invite/zt-3r4bkcx5t-iGyRMI~r09zt7p_ND2eP9A">
 <img src="https://img.shields.io/badge/Join-Slack-4A154B?style=for-the-badge&logo=slack" alt="Join Slack" />
@@ -369,9 +369,11 @@ Dr. Claw 完全响应式设计。在移动设备上：
 
 ## 许可证
 
-GNU General Public License v3.0 - 详见 [LICENSE](LICENSE) 文件。
+本仓库包含一个组合作品。
 
-本项目是开源的，在 GPL v3 许可下可自由使用、修改和分发。
+其中，源自 Claude Code UI 的上游部分继续适用 GNU General Public License v3.0（GPL-3.0）；Dr. Claw Contributors 的原创修改与新增部分适用 GNU Affero General Public License v3.0（AGPL-3.0）。
+
+完整许可证文本与适用范围说明请参见 [LICENSE](LICENSE) 和 [NOTICE](NOTICE)。
 
 ## 致谢
 

@@ -9,7 +9,7 @@
 <img src="https://img.shields.io/github/stars/OpenLAIR/dr-claw?style=for-the-badge&logo=github" alt="GitHub Stars" />
 </a>
 <a href="https://github.com/OpenLAIR/dr-claw/blob/main/LICENSE">
-<img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=for-the-badge" alt="License" />
+<img src="https://img.shields.io/badge/License-GPL--3.0%20%2B%20AGPL--3.0-blue?style=for-the-badge" alt="License: GPL-3.0 + AGPL-3.0" />
 </a>
 <a href="https://join.slack.com/t/vibe-lab-group/shared_invite/zt-3r4bkcx5t-iGyRMI~r09zt7p_ND2eP9A">
 <img src="https://img.shields.io/badge/Join-Slack-4A154B?style=for-the-badge&logo=slack" alt="Join Slack" />
@@ -369,9 +369,11 @@ For setup help and troubleshooting, see [FAQ](docs/faq.md).
 
 ## License
 
-GNU General Public License v3.0 - see [LICENSE](LICENSE) file for details.
+This repository contains a combined work.
 
-This project is open source and free to use, modify, and distribute under the GPL v3 license.
+Upstream portions derived from Claude Code UI remain under GNU General Public License v3.0 (GPL-3.0), while original modifications and additions by Dr. Claw Contributors are licensed under GNU Affero General Public License v3.0 (AGPL-3.0).
+
+See [LICENSE](LICENSE) and [NOTICE](NOTICE) for the full license texts and scope details.
 
 ## Acknowledgments
 
