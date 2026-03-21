@@ -149,3 +149,6 @@ server/data/
 xhs_results.json
 *_results.json
 __pycache__
+
+.pytest_cache
+*.egg-info/
