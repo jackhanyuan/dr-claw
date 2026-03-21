@@ -362,7 +362,7 @@
     "updateFailed": "업데이트 실패",
     "buttons": {
       "close": "닫기",
-      "later": "나중에",
+      "later": "나중에 다시 알림",
       "copyCommand": "명령어 복사",
       "updateNow": "지금 업데이트",
       "updating": "업데이트 중..."

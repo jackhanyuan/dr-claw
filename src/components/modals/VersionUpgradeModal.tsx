@@ -7,6 +7,7 @@ import type { InstallMode } from "../../hooks/useVersionCheck";
 interface VersionUpgradeModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onLater: () => void;
     releaseInfo: ReleaseInfo | null;
     currentVersion: string;
     latestVersion: string | null;
@@ -16,6 +17,7 @@ interface VersionUpgradeModalProps {
 export default function VersionUpgradeModal({
     isOpen,
     onClose,
+    onLater,
     releaseInfo,
     currentVersion,
     latestVersion,
@@ -168,7 +170,7 @@ export default function VersionUpgradeModal({
                 {/* Actions */}
                 <div className="flex gap-2 pt-2">
                     <button
-                        onClick={onClose}
+                        onClick={updateOutput ? onClose : onLater}
                         className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
                     >
                         {updateOutput ? t('versionUpdate.buttons.close') : t('versionUpdate.buttons.later')}

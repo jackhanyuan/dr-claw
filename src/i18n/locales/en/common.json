@@ -362,7 +362,7 @@
     "updateFailed": "Update failed",
     "buttons": {
       "close": "Close",
-      "later": "Later",
+      "later": "Remind Me Later",
       "copyCommand": "Copy Command",
       "updateNow": "Update Now",
       "updating": "Updating..."
