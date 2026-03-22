@@ -637,6 +637,16 @@ export function useChatComposerState({
       // Reuse the session currently represented by the route or pending view state.
       // This prevents interrupted chats from being treated as brand new sessions.
       const routedSessionId = getRouteSessionId();
+      
+      // If we're on the root path with no routed session AND no selected session, 
+      // treat it as an explicit new session start and clear any stale provider-specific session IDs.
+      const isExplicitNewSessionStart = window.location.pathname === '/' && !routedSessionId && !selectedSession?.id;
+      if (isExplicitNewSessionStart && typeof window !== 'undefined') {
+        sessionStorage.removeItem('geminiSessionId');
+        sessionStorage.removeItem('cursorSessionId');
+        sessionStorage.removeItem('pendingSessionId');
+      }
+
       const providerSessionId =
         provider === 'gemini'
           ? sessionStorage.getItem('geminiSessionId')
@@ -650,7 +660,6 @@ export function useChatComposerState({
         routedSessionId ||
         pendingViewSessionId ||
         providerSessionId;
-      const isExplicitNewSession = window.location.pathname === '/' && !effectiveSessionId;
       const isNewSession = !effectiveSessionId;
       const sessionToActivate = effectiveSessionId || `new-session-${Date.now()}`;
 
@@ -658,9 +667,6 @@ export function useChatComposerState({
         if (typeof window !== 'undefined') {
           // Reset stale pending IDs from previous interrupted runs before creating a new one.
           sessionStorage.removeItem('pendingSessionId');
-          if (provider === 'gemini') {
-            sessionStorage.removeItem('geminiSessionId');
-          }
         }
         pendingViewSessionRef.current = { sessionId: null, startedAt: Date.now() };
       }

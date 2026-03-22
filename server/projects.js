@@ -66,6 +66,7 @@ import crypto from 'crypto';
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import os from 'os';
+import { stripInternalContextPrefix } from './utils/sessionFormatting.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DRCLAW_SKILLS_DIR = path.join(__dirname, '..', 'skills');
@@ -1291,17 +1292,22 @@ async function parseJsonlSessions(filePath, projectName = null, dbSessionMap = n
 
             // Update summary from summary entries with sessionId - always take the LATEST in the file
             if (entry.type === 'summary' && entry.summary) {
-              session.summary = entry.summary;
+              session.summary = stripInternalContextPrefix(entry.summary);
             }
 
             // Track last user and assistant messages (skip system messages)
             if (entry.message?.role === 'user' && entry.message?.content) {
               const content = entry.message.content;
 
-              // Extract text from array format if needed
-              let textContent = content;
-              if (Array.isArray(content) && content.length > 0 && content[0].type === 'text') {
-                textContent = content[0].text;
+              // Extract text from all text parts if it's an array
+              let textContent = '';
+              if (Array.isArray(content)) {
+                textContent = content
+                  .filter(part => part.type === 'text')
+                  .map(part => part.text)
+                  .join(' ');
+              } else if (typeof content === 'string') {
+                textContent = content;
               }
 
               const isSystemMessage = typeof textContent === 'string' && (
@@ -1318,8 +1324,30 @@ async function parseJsonlSessions(filePath, projectName = null, dbSessionMap = n
                 textContent === 'Warmup' // Explicitly filter out "Warmup"
               );
 
-              if (typeof textContent === 'string' && textContent.length > 0 && !isSystemMessage) {
-                session.lastUserMessage = textContent;
+              if (textContent && textContent.length > 0) {
+                const cleaned = stripInternalContextPrefix(textContent, false);
+                
+                const isSystemMessage = typeof cleaned === 'string' && (
+                  cleaned.startsWith('<command-name>') ||
+                  cleaned.startsWith('<command-message>') ||
+                  cleaned.startsWith('<command-args>') ||
+                  cleaned.startsWith('<local-command-stdout>') ||
+                  cleaned.startsWith('<system-reminder>') ||
+                  cleaned.startsWith('Caveat:') ||
+                  cleaned.startsWith('This session is being continued from a previous') ||
+                  cleaned.startsWith('Invalid API key') ||
+                  cleaned.includes('{"subtasks":') || // Filter Task Master prompts
+                  cleaned.includes('CRITICAL: You MUST respond with ONLY a JSON') || // Filter Task Master system prompts
+                  cleaned === 'Warmup' // Explicitly filter out "Warmup"
+                );
+
+                if (cleaned && !isSystemMessage) {
+                  // If this is the very first message (no parent), use it as initial summary
+                  if (entry.parentUuid === null && session.summary === 'New Session') {
+                    session.summary = cleaned.length > 50 ? cleaned.substring(0, 50) + '...' : cleaned;
+                  }
+                  session.lastUserMessage = cleaned;
+                }
               }
             } else if (entry.message?.role === 'assistant' && entry.message?.content) {
               // Skip API error messages using the isApiErrorMessage flag
@@ -1339,15 +1367,19 @@ async function parseJsonlSessions(filePath, projectName = null, dbSessionMap = n
                   assistantText = entry.message.content;
                 }
 
-                // Additional filter for assistant messages with system content
-                const isSystemAssistantMessage = typeof assistantText === 'string' && (
-                  assistantText.startsWith('Invalid API key') ||
-                  assistantText.includes('{"subtasks":') ||
-                  assistantText.includes('CRITICAL: You MUST respond with ONLY a JSON')
-                );
+                if (assistantText) {
+                  const cleaned = stripInternalContextPrefix(assistantText, false);
 
-                if (assistantText && !isSystemAssistantMessage) {
-                  session.lastAssistantMessage = assistantText;
+                  // Additional filter for assistant messages with system content
+                  const isSystemAssistantMessage = typeof cleaned === 'string' && (
+                    cleaned.startsWith('Invalid API key') ||
+                    cleaned.includes('{"subtasks":') ||
+                    cleaned.includes('CRITICAL: You MUST respond with ONLY a JSON')
+                  );
+
+                  if (cleaned && !isSystemAssistantMessage) {
+                    session.lastAssistantMessage = cleaned;
+                  }
                 }
               }
             }
@@ -2558,7 +2590,7 @@ async function buildGeminiSessionsIndex() {
             !title.includes('Gemini Session') &&
             !title.includes('New Session')
           ) {
-            explicitTitle = title.trim();
+            explicitTitle = stripInternalContextPrefix(title.trim());
           }
 
           if (!firstMessageText && (entry.role === 'user' || (entry.type === 'message' && entry.role === 'user'))) {
@@ -2570,7 +2602,7 @@ async function buildGeminiSessionsIndex() {
                 : '';
 
             if (textContent.trim()) {
-              const cleaned = textContent.trim();
+              const cleaned = stripInternalContextPrefix(textContent.trim());
               if (!cleaned.includes('Base directory for this skill:') && !cleaned.startsWith('<command-name>')) {
                 const helpMatch = cleaned.match(/Please help me with ["'](.*?)["']/);
                 firstMessageText = helpMatch ? helpMatch[1] : cleaned.split('\n')[0].replace(/#+\s*/, '').trim();
@@ -2793,7 +2825,7 @@ async function parseCodexSessionFile(filePath) {
           if (entry.type === 'event_msg' && entry.payload?.type === 'user_message') {
             messageCount++;
             if (entry.payload.message) {
-              lastUserMessage = entry.payload.message;
+              lastUserMessage = stripInternalContextPrefix(entry.payload.message);
             }
           }
 

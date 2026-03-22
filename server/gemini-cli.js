@@ -6,6 +6,7 @@ import os from 'os';
 import { createRequestId, waitForToolApproval, matchesToolPermission } from './utils/permissions.js';
 import { ensureProjectSkillLinks } from './projects.js';
 import { writeProjectTemplates } from './templates/index.js';
+import { stripInternalContextPrefix } from './utils/sessionFormatting.js';
 import { recordIndexedSession } from './utils/sessionIndex.js';
 
 // Use cross-spawn on Windows for better command execution
@@ -110,25 +111,15 @@ function isAllowedBeforeTodos(rawToolName) {
   ].includes(normalized);
 }
 
-function stripInternalContextPrefix(text) {
-  if (typeof text !== 'string') return '';
-  let cleaned = text;
-  const contextPrefixPattern = /^\s*\[Context:[^\]]*]\s*(?:\r?\n\s*)*/i;
-  while (contextPrefixPattern.test(cleaned)) {
-    cleaned = cleaned.replace(contextPrefixPattern, '');
-  }
-  return cleaned;
-}
-
 function sanitizePersistedGeminiContent(content) {
   if (typeof content === 'string') {
-    return stripInternalContextPrefix(content);
+    return stripInternalContextPrefix(content, false);
   }
 
   if (Array.isArray(content)) {
     return content.map((part) => {
       if (part && typeof part === 'object' && typeof part.text === 'string') {
-        return { ...part, text: stripInternalContextPrefix(part.text) };
+        return { ...part, text: stripInternalContextPrefix(part.text, false) };
       }
       return part;
     });
