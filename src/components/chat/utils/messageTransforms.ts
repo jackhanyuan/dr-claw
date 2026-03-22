@@ -449,10 +449,10 @@ export const convertSessionMessages = (rawMessages: any[]): ChatMessage[] => {
 
       const shouldSkip =
         !rawText.trim() ||
-        rawText.startsWith('<system-reminder>') ||
-        rawText.startsWith('Caveat:') ||
-        rawText.startsWith('This session is being continued from a previous') ||
-        rawText.startsWith('[Request interrupted');
+        rawText.startsWith('<system-reminder>') || text.startsWith('<system-reminder>') ||
+        rawText.startsWith('Caveat:') || text.startsWith('Caveat:') ||
+        rawText.startsWith('This session is being continued from a previous') || text.startsWith('This session is being continued from a previous') ||
+        rawText.startsWith('[Request interrupted') || text.startsWith('[Request interrupted');
 
       if (shouldSkip) {
         return;
