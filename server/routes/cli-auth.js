@@ -5,57 +5,9 @@ import path from 'path';
 import os from 'os';
 import fetch from 'node-fetch';
 import { resolveCursorCliCommand } from '../utils/cursorCommand.js';
+import { resolveAvailableCliCommand } from '../utils/cliResolution.js';
 
 const router = express.Router();
-
-function checkCommandAvailable(command, args = ['--help']) {
-  return new Promise((resolve) => {
-    let completed = false;
-
-    let childProcess;
-    try {
-      childProcess = spawn(command, args, {
-        stdio: 'ignore',
-        env: process.env
-      });
-    } catch {
-      resolve(false);
-      return;
-    }
-
-    const finish = (value) => {
-      if (completed) return;
-      completed = true;
-      resolve(value);
-    };
-
-    const timeout = setTimeout(() => {
-      if (!completed) {
-        childProcess.kill();
-      }
-      finish(true);
-    }, 3000);
-
-    childProcess.on('error', (error) => {
-      clearTimeout(timeout);
-      if (error?.code === 'ENOENT') {
-        finish(false);
-        return;
-      }
-      finish(true);
-    });
-
-    childProcess.on('spawn', () => {
-      clearTimeout(timeout);
-      finish(true);
-    });
-
-    childProcess.on('close', (code) => {
-      clearTimeout(timeout);
-      finish(code !== 127);
-    });
-  });
-}
 
 function buildCliInstallHint(agent) {
   switch (agent) {
@@ -181,6 +133,7 @@ router.get('/gemini/status', async (req, res) => {
 
 async function checkGeminiCredentials() {
   console.log('[DEBUG] Checking Gemini credentials...');
+  let cliCommand = process.env.GEMINI_CLI_PATH || 'gemini';
   try {
     if (isCliMockedMissing('gemini')) {
       return {
@@ -188,19 +141,25 @@ async function checkGeminiCredentials() {
         email: null,
         error: 'Gemini CLI not installed (mocked)',
         cliAvailable: false,
-        cliCommand: 'gemini',
+        cliCommand,
         installHint: buildCliInstallHint('gemini')
       };
     }
 
-    const cliAvailable = await checkCommandAvailable('gemini');
-    if (!cliAvailable) {
+    const resolvedCliCommand = await resolveAvailableCliCommand({
+      envVarName: 'GEMINI_CLI_PATH',
+      defaultCommands: ['gemini'],
+      appendWindowsSuffixes: true
+    });
+    cliCommand = resolvedCliCommand || cliCommand;
+
+    if (!resolvedCliCommand) {
       return {
         authenticated: false,
         email: null,
         error: 'Gemini CLI not installed',
         cliAvailable: false,
-        cliCommand: 'gemini',
+        cliCommand,
         installHint: buildCliInstallHint('gemini')
       };
     }
@@ -212,7 +171,7 @@ async function checkGeminiCredentials() {
         authenticated: true,
         email: 'API Key (Env)',
         cliAvailable: true,
-        cliCommand: 'gemini'
+        cliCommand
       };
     }
 
@@ -222,11 +181,11 @@ async function checkGeminiCredentials() {
     try {
       const content = await fs.readFile(oauthPath, 'utf8');
       const creds = JSON.parse(content);
-      
+
       // Check for presence of refresh_token or access_token
       if (creds.refresh_token || creds.access_token) {
         let email = creds.email || 'OAuth (Config)';
-        
+
         // Try to extract email from id_token if available
         if (!creds.email && creds.id_token) {
           try {
@@ -239,13 +198,13 @@ async function checkGeminiCredentials() {
             console.warn('[DEBUG] Gemini: Failed to decode id_token', jwtError.message);
           }
         }
-        
+
         console.log(`[DEBUG] Gemini: Authenticated via OAuth as ${email}`);
         return {
           authenticated: true,
           email: email,
           cliAvailable: true,
-          cliCommand: 'gemini'
+          cliCommand
         };
       } else {
         console.log('[DEBUG] Gemini: OAuth file found but no tokens present');
@@ -271,7 +230,7 @@ async function checkGeminiCredentials() {
           authenticated: true,
           email: 'API Key (Config)',
           cliAvailable: true,
-          cliCommand: 'gemini'
+          cliCommand
         };
       }
     } catch (e) {
@@ -286,7 +245,7 @@ async function checkGeminiCredentials() {
       email: null,
       error: 'Gemini not configured',
       cliAvailable: true,
-      cliCommand: 'gemini'
+      cliCommand
     };
   } catch (error) {
     console.error('[DEBUG] Gemini: Unexpected error during auth check', error);
@@ -296,7 +255,7 @@ async function checkGeminiCredentials() {
         email: null,
         error: 'Gemini not configured',
         cliAvailable: true,
-        cliCommand: 'gemini'
+        cliCommand
       };
     }
     return {
@@ -304,7 +263,7 @@ async function checkGeminiCredentials() {
       email: null,
       error: error.message,
       cliAvailable: true,
-      cliCommand: 'gemini'
+      cliCommand
     };
   }
 }
@@ -529,15 +488,22 @@ function checkCursorStatus() {
 }
 
 async function checkCodexCredentials() {
+  let cliCommand = process.env.CODEX_CLI_PATH || 'codex';
   try {
-    const cliAvailable = await checkCommandAvailable('codex');
-    if (!cliAvailable) {
+    const resolvedCliCommand = await resolveAvailableCliCommand({
+      envVarName: 'CODEX_CLI_PATH',
+      defaultCommands: ['codex'],
+      appendWindowsSuffixes: true
+    });
+    cliCommand = resolvedCliCommand || cliCommand;
+
+    if (!resolvedCliCommand) {
       return {
         authenticated: false,
         email: null,
         error: 'Codex CLI not installed',
         cliAvailable: false,
-        cliCommand: 'codex',
+        cliCommand,
         installHint: buildCliInstallHint('codex')
       };
     }
@@ -572,7 +538,7 @@ async function checkCodexCredentials() {
         authenticated: true,
         email,
         cliAvailable: true,
-        cliCommand: 'codex'
+        cliCommand
       };
     }
 
@@ -582,7 +548,7 @@ async function checkCodexCredentials() {
         authenticated: true,
         email: 'API Key Auth',
         cliAvailable: true,
-        cliCommand: 'codex'
+        cliCommand
       };
     }
 
@@ -591,7 +557,7 @@ async function checkCodexCredentials() {
       email: null,
       error: 'No valid tokens found',
       cliAvailable: true,
-      cliCommand: 'codex'
+      cliCommand
     };
   } catch (error) {
     if (error.code === 'ENOENT') {
@@ -600,7 +566,7 @@ async function checkCodexCredentials() {
         email: null,
         error: 'Codex not configured',
         cliAvailable: true,
-        cliCommand: 'codex'
+        cliCommand
       };
     }
     return {
@@ -608,7 +574,7 @@ async function checkCodexCredentials() {
       email: null,
       error: error.message,
       cliAvailable: true,
-      cliCommand: 'codex'
+      cliCommand
     };
   }
 }

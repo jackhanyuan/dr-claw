@@ -16,7 +16,7 @@ import { isTelemetryEnabled } from '../../../utils/telemetry';
 import { thinkingModes } from '../constants/thinkingModes';
 
 import { grantToolPermission } from '../utils/chatPermissions';
-import { getProviderSettingsKey, safeLocalStorage } from '../utils/chatStorage';
+import { getProviderSettingsKey, persistSessionTimerStart, safeLocalStorage } from '../utils/chatStorage';
 import { consumeWorkspaceQaDraft, WORKSPACE_QA_DRAFT_EVENT } from '../../../utils/workspaceQa';
 import type {
   ChatMessage,
@@ -60,7 +60,7 @@ interface UseChatComposerStateArgs {
   setSessionMessages?: Dispatch<SetStateAction<any[]>>;
   setIsLoading: (loading: boolean) => void;
   setCanAbortSession: (canAbort: boolean) => void;
-  setClaudeStatus: (status: { text: string; tokens: number; can_interrupt: boolean } | null) => void;
+  setClaudeStatus: Dispatch<SetStateAction<{ text: string; tokens: number; can_interrupt: boolean; startTime?: number } | null>>;
   setIsUserScrolledUp: (isScrolledUp: boolean) => void;
   setPendingPermissionRequests: Dispatch<SetStateAction<PendingPermissionRequest[]>>;
   newSessionMode?: SessionMode;
@@ -621,12 +621,14 @@ export function useChatComposerState({
         clearTimeout(abortTimeoutRef.current);
         abortTimeoutRef.current = null;
       }
+      const turnStartTime = Date.now();
       setIsLoading(true);
       setCanAbortSession(true);
       setClaudeStatus({
         text: 'Processing',
         tokens: 0,
         can_interrupt: true,
+        startTime: turnStartTime,
       });
 
       setIsUserScrolledUp(false);
@@ -635,6 +637,16 @@ export function useChatComposerState({
       // Reuse the session currently represented by the route or pending view state.
       // This prevents interrupted chats from being treated as brand new sessions.
       const routedSessionId = getRouteSessionId();
+      
+      // If we're on the root path with no routed session AND no selected session, 
+      // treat it as an explicit new session start and clear any stale provider-specific session IDs.
+      const isExplicitNewSessionStart = window.location.pathname === '/' && !routedSessionId && !selectedSession?.id;
+      if (isExplicitNewSessionStart && typeof window !== 'undefined') {
+        sessionStorage.removeItem('geminiSessionId');
+        sessionStorage.removeItem('cursorSessionId');
+        sessionStorage.removeItem('pendingSessionId');
+      }
+
       const providerSessionId =
         provider === 'gemini'
           ? sessionStorage.getItem('geminiSessionId')
@@ -648,7 +660,6 @@ export function useChatComposerState({
         routedSessionId ||
         pendingViewSessionId ||
         providerSessionId;
-      const isExplicitNewSession = window.location.pathname === '/' && !effectiveSessionId;
       const isNewSession = !effectiveSessionId;
       const sessionToActivate = effectiveSessionId || `new-session-${Date.now()}`;
 
@@ -656,12 +667,10 @@ export function useChatComposerState({
         if (typeof window !== 'undefined') {
           // Reset stale pending IDs from previous interrupted runs before creating a new one.
           sessionStorage.removeItem('pendingSessionId');
-          if (provider === 'gemini') {
-            sessionStorage.removeItem('geminiSessionId');
-          }
         }
         pendingViewSessionRef.current = { sessionId: null, startedAt: Date.now() };
       }
+      persistSessionTimerStart(sessionToActivate, turnStartTime);
       onSessionActive?.(sessionToActivate);
 
       const getToolsSettings = () => {

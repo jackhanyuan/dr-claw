@@ -46,6 +46,7 @@ export const api = {
   // Protected endpoints
   // config endpoint removed - no longer needed (frontend uses window.location)
   projects: () => authenticatedFetch('/api/projects'),
+  trashedProjects: () => authenticatedFetch('/api/projects/trash'),
   settings: {
     autoResearchEmail: () => authenticatedFetch('/api/settings/auto-research-email'),
     updateAutoResearchEmail: (senderEmail) =>
@@ -112,6 +113,14 @@ export const api = {
     }),
   deleteProject: (projectName, force = false) =>
     authenticatedFetch(`/api/projects/${projectName}${force ? '?force=true' : ''}`, {
+      method: 'DELETE',
+    }),
+  restoreProject: (projectName) =>
+    authenticatedFetch(`/api/projects/trash/${projectName}/restore`, {
+      method: 'POST',
+    }),
+  deleteTrashedProject: (projectName, mode = 'logical') =>
+    authenticatedFetch(`/api/projects/trash/${projectName}?mode=${encodeURIComponent(mode)}`, {
       method: 'DELETE',
     }),
   createProject: (path) =>
@@ -339,7 +348,10 @@ export const api = {
     /** Poll search progress logs for a source. */
     getLogs: (source) => authenticatedFetch(`/api/news/logs/${source}`),
     /** Trigger xhs login (returns JSON with success, nickname, logs). */
-    xhsLogin: () => authenticatedFetch('/api/news/xhs-login', { method: 'POST' }),
+    xhsLogin: (options = {}) => authenticatedFetch('/api/news/xhs-login', {
+      method: 'POST',
+      body: JSON.stringify(options),
+    }),
   },
 
   // Generic GET method for any endpoint

@@ -4,7 +4,7 @@ import type { MutableRefObject } from 'react';
 import { api, authenticatedFetch } from '../../../utils/api';
 import type { ChatMessage, Provider } from '../types/types';
 import type { Project, ProjectSession } from '../../../types/app';
-import { safeLocalStorage } from '../utils/chatStorage';
+import { readSessionTimerStart, safeLocalStorage } from '../utils/chatStorage';
 import {
   convertCursorSessionMessages,
   convertSessionMessages,
@@ -48,6 +48,8 @@ export function useChatSessionState({
   resetStreamingState,
   pendingViewSessionRef,
 }: UseChatSessionStateArgs) {
+  const persistedInitialStartTime = selectedSession?.id ? readSessionTimerStart(selectedSession.id) : null;
+
   const [chatMessages, _setChatMessages] = useState<ChatMessage[]>(() => {
     if (typeof window !== 'undefined' && selectedProject) {
       const saved = safeLocalStorage.getItem(`chat_messages_${selectedProject.name}`);
@@ -80,7 +82,15 @@ export function useChatSessionState({
     });
   }, []);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(() => {
+    if (selectedSession?.id && processingSessions?.has(selectedSession.id)) {
+      return true;
+    }
+    if (persistedInitialStartTime) {
+      return true;
+    }
+    return false;
+  });
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(selectedSession?.id || null);
   const [sessionMessages, setSessionMessages] = useState<any[]>([]);
   const [isLoadingSessionMessages, setIsLoadingSessionMessages] = useState(false);
@@ -92,7 +102,18 @@ export function useChatSessionState({
   const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
   const [tokenBudget, setTokenBudget] = useState<Record<string, unknown> | null>(null);
   const [visibleMessageCount, setVisibleMessageCount] = useState(INITIAL_VISIBLE_MESSAGES);
-  const [claudeStatus, setClaudeStatus] = useState<{ text: string; tokens: number; can_interrupt: boolean } | null>(null);
+  const [claudeStatus, setClaudeStatus] = useState<{ text: string; tokens: number; can_interrupt: boolean; startTime?: number } | null>(() => {
+    if (!persistedInitialStartTime) {
+      return null;
+    }
+
+    return {
+      text: 'Resuming...',
+      tokens: 0,
+      can_interrupt: true,
+      startTime: persistedInitialStartTime,
+    };
+  });
   const [allMessagesLoaded, setAllMessagesLoaded] = useState(false);
   const [isLoadingAllMessages, setIsLoadingAllMessages] = useState(false);
   const [loadAllJustFinished, setLoadAllJustFinished] = useState(false);
@@ -367,27 +388,22 @@ export function useChatSessionState({
           if (loadAllOverlayTimerRef.current) clearTimeout(loadAllOverlayTimerRef.current);
           if (loadAllFinishedTimerRef.current) clearTimeout(loadAllFinishedTimerRef.current);
           setTokenBudget(null);
-          setIsLoading(false);
-
-          if (ws) {
-            sendMessage({
-              type: 'check-session-status',
-              sessionId: selectedSession.id,
-              provider: currentProvider,
-            });
+          
+          // Only set isLoading to false if it's NOT in the processingSessions set
+          const isProcessing = processingSessions?.has(selectedSession.id);
+          if (!isProcessing) {
+            setIsLoading(false);
           }
-        } else if (currentSessionId === null) {
-          messagesOffsetRef.current = 0;
-          setHasMoreMessages(false);
-          setTotalMessages(0);
+        }
 
-          if (ws) {
-            sendMessage({
-              type: 'check-session-status',
-              sessionId: selectedSession.id,
-              provider: currentProvider,
-            });
-          }
+        // Always check status if we have a websocket and a session, 
+        // especially on initial load or reconnect.
+        if (ws && selectedSession?.id) {
+          sendMessage({
+            type: 'check-session-status',
+            sessionId: selectedSession.id,
+            provider: currentProvider,
+          });
         }
 
         if (currentProvider === 'cursor') {
@@ -604,11 +620,35 @@ export function useChatSessionState({
 
   useEffect(() => {
     const activeViewSessionId = selectedSession?.id || currentSessionId;
-    if (!activeViewSessionId || !processingSessions) {
+    if (!activeViewSessionId) {
       return;
     }
 
-    const shouldBeProcessing = processingSessions.has(activeViewSessionId);
+    const persistedStartTime = readSessionTimerStart(activeViewSessionId);
+    if (persistedStartTime) {
+      setClaudeStatus((previous) => {
+        if (previous?.startTime === persistedStartTime) {
+          return previous;
+        }
+
+        return {
+          text: previous?.text || 'Resuming...',
+          tokens: previous?.tokens || 0,
+          can_interrupt: previous?.can_interrupt !== false,
+          startTime: persistedStartTime,
+        };
+      });
+    }
+
+    if (!processingSessions) {
+      if (persistedStartTime && !isLoading) {
+        setIsLoading(true);
+        setCanAbortSession(true);
+      }
+      return;
+    }
+
+    const shouldBeProcessing = processingSessions.has(activeViewSessionId) || Boolean(persistedStartTime);
     if (shouldBeProcessing && !isLoading) {
       setIsLoading(true);
       setCanAbortSession(true);

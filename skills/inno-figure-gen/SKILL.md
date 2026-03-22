@@ -1,11 +1,11 @@
 ---
 name: inno-figure-gen
-description: Generate/edit images with Gemini image models (default: gemini-3.1-flash-image). Use for image create/modify requests incl. edits. Supports text-to-image + image-to-image; 1K/2K/4K; use --input-image. Use --model to select a different model.
+description: Generate/edit images with Gemini image models (default: gemini-3.1-flash-image-preview). Use for image create/modify requests incl. edits. Supports text-to-image + image-to-image; 1K/2K/4K; use --input-image. Use --model to select a different model.
 ---
 
 # Gemini Image Generation & Editing
 
-Generate new images or edit existing ones using Google's Gemini image generation API (default model: `gemini-3.1-flash-image`).
+Generate new images or edit existing ones using Google's Gemini image generation API (default model: `gemini-3.1-flash-image-preview`).
 
 ## Usage
 
@@ -50,14 +50,14 @@ Map user requests to API parameters:
 
 ## Model Selection
 
-The default model is `gemini-3.1-flash-image`. You can override it with the `--model` flag:
+The default model is `gemini-3.1-flash-image-preview`. You can override it with the `--model` flag:
 
 ```bash
-uv run ~/.codex/skills/inno-figure-gen/scripts/generate_image.py --prompt "..." --filename "..." --model gemini-3.1-flash-image
+uv run ~/.codex/skills/inno-figure-gen/scripts/generate_image.py --prompt "..." --filename "..." --model gemini-3.1-flash-image-preview
 ```
 
 Available models depend on your Gemini API access. Common options:
-- `gemini-3.1-flash-image` (default) - Fast image generation
+- `gemini-3.1-flash-image-preview` (default) - Fast image generation
 - `gemini-3-pro-image-preview` - Higher quality, slower
 
 ## API Key

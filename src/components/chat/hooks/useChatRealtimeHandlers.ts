@@ -2,7 +2,12 @@ import { useEffect, useRef } from 'react';
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import { decodeHtmlEntities, formatUsageLimitText, unescapeWithMathProtection } from '../utils/chatFormatting';
 import { parseAskUserAnswers, mergeAnswersIntoToolInput } from '../utils/messageTransforms';
-import { safeLocalStorage } from '../utils/chatStorage';
+import {
+  clearSessionTimerStart,
+  moveSessionTimerStart,
+  persistSessionTimerStart,
+  safeLocalStorage,
+} from '../utils/chatStorage';
 import type { ChatMessage, PendingPermissionRequest } from '../types/types';
 import type { Project, ProjectSession, SessionProvider } from '../../../types/app';
 
@@ -37,7 +42,7 @@ interface UseChatRealtimeHandlersArgs {
   setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   setIsLoading: (loading: boolean) => void;
   setCanAbortSession: (canAbort: boolean) => void;
-  setClaudeStatus: (status: { text: string; tokens: number; can_interrupt: boolean } | null) => void;
+  setClaudeStatus: Dispatch<SetStateAction<{ text: string; tokens: number; can_interrupt: boolean; startTime?: number } | null>>;
   setTokenBudget: (budget: Record<string, unknown> | null) => void;
   setIsSystemSessionChange: (isSystemSessionChange: boolean) => void;
   setPendingPermissionRequests: Dispatch<SetStateAction<PendingPermissionRequest[]>>;
@@ -399,8 +404,37 @@ export function useChatRealtimeHandlers({
       if (!sessionId) {
         return;
       }
+      clearSessionTimerStart(sessionId);
       onSessionInactive?.(sessionId);
       onSessionNotProcessing?.(sessionId);
+    };
+
+    const persistStartTime = (startTime?: number | null, ...sessionIds: Array<string | null | undefined>) => {
+      if (!Number.isFinite(startTime)) {
+        return;
+      }
+
+      const targetSessionId = sessionIds.find((sessionId): sessionId is string => typeof sessionId === 'string' && sessionId.length > 0);
+      if (!targetSessionId) {
+        return;
+      }
+
+      persistSessionTimerStart(targetSessionId, startTime);
+    };
+
+    const syncClaudeStatusStartTime = (startTime?: number | null, fallbackText = 'Processing') => {
+      if (!Number.isFinite(startTime)) {
+        return;
+      }
+
+      const normalizedStartTime = startTime as number;
+
+      setClaudeStatus((prev) => ({
+        text: prev?.text || fallbackText,
+        tokens: prev?.tokens || 0,
+        can_interrupt: prev?.can_interrupt !== undefined ? prev.can_interrupt : true,
+        startTime: normalizedStartTime,
+      }));
     };
 
     const clearLoadingIndicators = () => {
@@ -423,6 +457,7 @@ export function useChatRealtimeHandlers({
     const markSessionsAsCompleted = (...sessionIds: Array<string | null | undefined>) => {
       const normalizedSessionIds = sessionIds.filter((id): id is string => typeof id === 'string' && id.length > 0);
       normalizedSessionIds.forEach((sessionId) => {
+        clearSessionTimerStart(sessionId);
         onSessionInactive?.(sessionId);
         onSessionNotProcessing?.(sessionId);
       });
@@ -455,6 +490,15 @@ export function useChatRealtimeHandlers({
         if (latestMessage.sessionId && (!currentSessionId || currentSessionId.startsWith('new-session-'))) {
           const createdSessionProvider =
             (latestMessage.provider as SessionProvider | undefined) || provider;
+          const pendingStartTime = pendingViewSessionRef.current?.startedAt;
+          const temporarySessionId = currentSessionId?.startsWith('new-session-') ? currentSessionId : null;
+          if (temporarySessionId) {
+            moveSessionTimerStart(temporarySessionId, latestMessage.sessionId);
+          }
+          persistStartTime(
+            typeof latestMessage.startTime === 'number' ? latestMessage.startTime : pendingStartTime,
+            latestMessage.sessionId,
+          );
           if (selectedProject && latestMessage.mode) {
             safeLocalStorage.setItem(`session_mode_${selectedProject.name}_${latestMessage.sessionId}`, String(latestMessage.mode));
           }
@@ -486,7 +530,12 @@ export function useChatRealtimeHandlers({
 
       case 'claude-response': {
         if (messageData && typeof messageData === 'object' && messageData.type) {
+          if (Number.isFinite(messageData.startTime)) {
+            persistStartTime(messageData.startTime, latestMessage.sessionId, currentSessionId, selectedSession?.id);
+            syncClaudeStatusStartTime(messageData.startTime);
+          }
           if (messageData.type === 'content_block_delta' && messageData.delta?.text) {
+            setIsLoading(true);
             const decodedText = decodeHtmlEntities(messageData.delta.text);
             streamBufferRef.current += decodedText;
             if (!streamTimerRef.current) {
@@ -535,7 +584,12 @@ export function useChatRealtimeHandlers({
 
       case 'gemini-response': {
         if (messageData && typeof messageData === 'object' && messageData.type) {
+          if (Number.isFinite(messageData.startTime)) {
+            persistStartTime(messageData.startTime, latestMessage.sessionId, currentSessionId, selectedSession?.id);
+            syncClaudeStatusStartTime(messageData.startTime);
+          }
           if (messageData.type === 'content_block_delta' && messageData.delta?.text) {
+            setIsLoading(true);
             const decodedText = decodeHtmlEntities(messageData.delta.text);
             streamBufferRef.current += decodedText;
             if (!streamTimerRef.current) {
@@ -695,6 +749,12 @@ export function useChatRealtimeHandlers({
       case 'cursor-result': {
         const cursorCompletedSessionId = latestMessage.sessionId || currentSessionId;
         const pendingCursorSessionId = sessionStorage.getItem('pendingSessionId');
+        
+        if (Number.isFinite(latestMessage.startTime)) {
+          persistStartTime(latestMessage.startTime, latestMessage.sessionId, currentSessionId, selectedSession?.id);
+          syncClaudeStatusStartTime(latestMessage.startTime);
+        }
+
         clearLoadingIndicators();
         markSessionsAsCompleted(cursorCompletedSessionId, currentSessionId, selectedSession?.id, pendingCursorSessionId);
         try {
@@ -731,8 +791,16 @@ export function useChatRealtimeHandlers({
 
       case 'cursor-output':
         try {
+          if (Number.isFinite(latestMessage.startTime)) {
+            persistStartTime(latestMessage.startTime, latestMessage.sessionId, currentSessionId, selectedSession?.id);
+            syncClaudeStatusStartTime(latestMessage.startTime);
+          }
+          setIsLoading(true);
           const raw = String(latestMessage.data ?? '');
-          const cleaned = raw.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim();
+          const cleaned = raw
+            .replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')
+            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
+            .trim();
           if (cleaned) {
             streamBufferRef.current += streamBufferRef.current ? `\n${cleaned}` : cleaned;
             if (!streamTimerRef.current) {
@@ -753,6 +821,12 @@ export function useChatRealtimeHandlers({
         const codexData = latestMessage.data;
         if (!codexData) break;
 
+        if (Number.isFinite(codexData.startTime)) {
+          persistStartTime(codexData.startTime, latestMessage.sessionId, currentSessionId, selectedSession?.id);
+          syncClaudeStatusStartTime(codexData.startTime);
+        }
+
+        setIsLoading(true);
         if (codexData.type === 'item') {
           const itemId = codexData.itemId;
           const lifecycle = codexData.lifecycle; // 'started' | 'completed' | 'other'
@@ -1104,10 +1178,16 @@ export function useChatRealtimeHandlers({
         const statusSessionId = latestMessage.sessionId;
         const isCurrentSession = statusSessionId === currentSessionId || (selectedSession && statusSessionId === selectedSession.id);
         if (isCurrentSession && latestMessage.isProcessing) {
+          persistStartTime(latestMessage.startTime, statusSessionId, currentSessionId, selectedSession?.id);
           setIsLoading(true);
           setCanAbortSession(true);
           onSessionProcessing?.(statusSessionId);
+          // If we have a startTime from the backend, sync our status
+          if (Number.isFinite(latestMessage.startTime)) {
+            syncClaudeStatusStartTime(latestMessage.startTime, 'Resuming...');
+          }
         } else if (isCurrentSession && latestMessage.isProcessing === false) {
+          clearSessionTimerStart(statusSessionId);
           clearLoadingIndicators();
           onSessionNotProcessing?.(statusSessionId);
         }
@@ -1149,12 +1229,20 @@ export function useChatRealtimeHandlers({
       case 'gemini-status': {
         const statusData = latestMessage.data;
         if (!statusData) break;
+        persistStartTime(statusData.startTime, latestMessage.sessionId, currentSessionId, selectedSession?.id);
         const statusInfo = { 
           text: statusData.message || statusData.status || (typeof statusData === 'string' ? statusData : 'Working...'), 
           tokens: statusData.tokens || statusData.token_count || 0, 
-          can_interrupt: statusData.can_interrupt !== undefined ? statusData.can_interrupt : true 
+          can_interrupt: statusData.can_interrupt !== undefined ? statusData.can_interrupt : true,
+          startTime: statusData.startTime // Use startTime from message if provided
         };
-        setClaudeStatus(statusInfo);
+        
+        // Use updater function to preserve existing startTime if not provided in message
+        setClaudeStatus(prev => ({
+          ...statusInfo,
+          startTime: Number.isFinite(statusInfo.startTime) ? statusInfo.startTime : prev?.startTime
+        }));
+        
         setIsLoading(true);
         setCanAbortSession(statusInfo.can_interrupt);
         break;

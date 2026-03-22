@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next';
 import type { Project } from '../../../types/app';
+import { stripInternalContextPrefix } from '../../../utils/sessionFormatting';
 import type {
   AdditionalSessionsByProject,
   ProjectSortOrder,
@@ -52,19 +53,18 @@ export const getSessionDate = (session: SessionWithProvider): Date => {
 };
 
 export const getSessionName = (session: SessionWithProvider, t: TFunction): string => {
+  let name = '';
   if (session.__provider === 'cursor') {
-    return session.name || t('projects.untitledSession');
+    name = session.name || t('projects.untitledSession');
+  } else if (session.__provider === 'codex') {
+    name = session.summary || session.name || t('projects.codexSession');
+  } else if (session.__provider === 'gemini') {
+    name = session.summary || session.name || 'Gemini Session';
+  } else {
+    name = session.summary || t('projects.newSession');
   }
-
-  if (session.__provider === 'codex') {
-    return session.summary || session.name || t('projects.codexSession');
-  }
-
-  if (session.__provider === 'gemini') {
-    return session.summary || session.name || 'Gemini Session';
-  }
-
-  return session.summary || t('projects.newSession');
+  
+  return stripInternalContextPrefix(name) || t('projects.newSession');
 };
 
 export const getSessionMode = (session: SessionWithProvider) => {

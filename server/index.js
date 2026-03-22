@@ -44,12 +44,12 @@ import pty from 'node-pty';
 import fetch from 'node-fetch';
 import mime from 'mime-types';
 
-import { getProjects, getSessions, getSessionMessages, renameProject, renameSession, deleteSession, deleteProject, addProjectManually, extractProjectDirectory, clearProjectDirectoryCache } from './projects.js';
+import { getProjects, getTrashedProjects, getSessions, getSessionMessages, renameProject, renameSession, deleteSession, deleteProject, restoreProject, deleteTrashedProject, addProjectManually, extractProjectDirectory, clearProjectDirectoryCache } from './projects.js';
 import { getProjectTokenUsageSummary } from './project-token-usage.js';
-import { queryClaudeSDK, abortClaudeSDKSession, isClaudeSDKSessionActive, getActiveClaudeSDKSessions, resolveToolApproval } from './claude-sdk.js';
-import { spawnCursor, abortCursorSession, isCursorSessionActive, getActiveCursorSessions } from './cursor-cli.js';
-import { queryCodex, abortCodexSession, isCodexSessionActive, getActiveCodexSessions } from './openai-codex.js';
-import { spawnGemini, abortGeminiSession, isGeminiSessionActive, getActiveGeminiSessions } from './gemini-cli.js';
+import { queryClaudeSDK, abortClaudeSDKSession, isClaudeSDKSessionActive, getClaudeSDKSessionStartTime, getActiveClaudeSDKSessions, resolveToolApproval } from './claude-sdk.js';
+import { spawnCursor, abortCursorSession, isCursorSessionActive, getCursorSessionStartTime, getActiveCursorSessions } from './cursor-cli.js';
+import { queryCodex, abortCodexSession, isCodexSessionActive, getCodexSessionStartTime, getActiveCodexSessions } from './openai-codex.js';
+import { spawnGemini, abortGeminiSession, isGeminiSessionActive, getGeminiSessionStartTime, getActiveGeminiSessions } from './gemini-cli.js';
 import gitRoutes from './routes/git.js';
 import authRoutes from './routes/auth.js';
 import mcpRoutes from './routes/mcp.js';
@@ -448,18 +448,18 @@ const expandWorkspacePath = async (inputPath) => {
 // Browse filesystem endpoint for project suggestions - uses existing getFileTree
 app.get('/api/browse-filesystem', authenticateToken, async (req, res) => {
     try {
-        const { path: dirPath } = req.query;
+        const { path: dirPath, showHidden: showHiddenQuery } = req.query;
+        const showHidden = showHiddenQuery === 'true';
 
-        console.log('[API] Browse filesystem request for path:', dirPath);
-        const defaultRoot = await getWorkspacesRoot();
-        console.log('[API] Workspace root is:', defaultRoot);
-        // Default to workspace root if no path provided
-        let targetPath = dirPath ? await expandWorkspacePath(dirPath) : defaultRoot;
+        console.log('[API] Browse filesystem request for path:', dirPath, 'showHidden:', showHidden);
+        const homeDir = os.homedir();
+        // Default to home directory if no path provided
+        let targetPath = dirPath ? await expandWorkspacePath(dirPath) : homeDir;
 
         // Resolve and normalize the path
         targetPath = path.resolve(targetPath);
 
-        // Security check - ensure path is within allowed workspace root
+        // Security check - ensure path is valid
         const validation = await validateWorkspacePath(targetPath);
         if (!validation.valid) {
             return res.status(403).json({ error: validation.error });
@@ -479,7 +479,8 @@ app.get('/api/browse-filesystem', authenticateToken, async (req, res) => {
         }
 
         // Use existing getFileTree function with shallow depth (only direct children)
-        const fileTree = await getFileTree(resolvedPath, 1, 0, false); // maxDepth=1, showHidden=false
+        // For browsing, we use a more permissive version that doesn't skip node_modules etc.
+        const fileTree = await getFileTree(resolvedPath, 1, 0, showHidden, true); // maxDepth=1, showHidden, isBrowsing=true
 
         // Filter only directories and format for suggestions
         const directories = fileTree
@@ -499,14 +500,15 @@ app.get('/api/browse-filesystem', authenticateToken, async (req, res) => {
 
         // Add common directories if browsing home directory
         const suggestions = [];
-        let resolvedWorkspaceRoot = defaultRoot;
+        let resolvedHomeDir = homeDir;
         try {
-            resolvedWorkspaceRoot = await fsPromises.realpath(defaultRoot);
+            resolvedHomeDir = await fs.promises.realpath(homeDir);
         } catch (error) {
-            // Use default root as-is if realpath fails
+            // Use home dir as-is if realpath fails
         }
-        if (resolvedPath === resolvedWorkspaceRoot) {
-            const commonDirs = ['Desktop', 'Documents', 'Projects', 'Development', 'Dev', 'Code', 'workspace'];
+
+        if (resolvedPath === resolvedHomeDir) {
+            const commonDirs = ['Desktop', 'Documents', 'Downloads', 'Projects', 'Development', 'Dev', 'Code', 'workspace', 'vibelab'];
             const existingCommon = directories.filter(dir => commonDirs.includes(dir.name));
             const otherDirs = directories.filter(dir => !commonDirs.includes(dir.name));
 
@@ -666,6 +668,16 @@ app.get('/api/projects', authenticateToken, async (req, res) => {
     }
 });
 
+app.get('/api/projects/trash', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const projects = await getTrashedProjects(userId);
+        res.json(projects);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/projects/token-usage-summary', authenticateToken, async (req, res) => {
     try {
         const projectRefs = req.body?.projects;
@@ -761,9 +773,31 @@ app.delete('/api/projects/:projectName/sessions/:sessionId', authenticateToken, 
 // Delete project endpoint (force=true to delete with sessions)
 app.delete('/api/projects/:projectName', authenticateToken, async (req, res) => {
     try {
+        const userId = req.user?.id;
         const { projectName } = req.params;
         const force = req.query.force === 'true';
-        await deleteProject(projectName, force);
+        await deleteProject(projectName, force, userId);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/projects/trash/:projectName/restore', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        await restoreProject(req.params.projectName, userId);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/projects/trash/:projectName', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const mode = req.query.mode === 'physical' ? 'physical' : 'logical';
+        await deleteTrashedProject(req.params.projectName, mode, userId);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -771,21 +805,24 @@ app.delete('/api/projects/:projectName', authenticateToken, async (req, res) => 
 });
 
 // Create project endpoint
-app.post('/api/projects/create', authenticateToken, async (req, res) => {
+async function handleCreateProject(req, res) {
     try {
-        const { path: projectPath } = req.body;
+        const { path: projectPath, displayName = null } = req.body;
 
         if (!projectPath || !projectPath.trim()) {
             return res.status(400).json({ error: 'Project path is required' });
         }
 
-        const project = await addProjectManually(projectPath.trim(), null, req.user?.id);
+        const project = await addProjectManually(projectPath.trim(), displayName, req.user?.id);
         res.json({ success: true, project });
     } catch (error) {
         console.error('Error creating project:', error);
         res.status(500).json({ error: error.message });
     }
-});
+}
+
+app.post('/api/projects/create', authenticateToken, handleCreateProject);
+app.post('/api/projects', authenticateToken, handleCreateProject);
 
 // Read file content endpoint
 app.get('/api/projects/:projectName/file', authenticateToken, async (req, res) => {
@@ -1131,6 +1168,7 @@ class WebSocketWriter {
     this.sessionId = null;
     this.isWebSocketWriter = true;  // Marker for transport detection
     this.telemetryContext = telemetryContext;
+    this.projectPath = null;
   }
 
   send(data) {
@@ -1145,8 +1183,16 @@ class WebSocketWriter {
     this.sessionId = sessionId;
   }
 
+  setProjectPath(projectPath) {
+    this.projectPath = projectPath;
+  }
+
   getSessionId() {
     return this.sessionId;
+  }
+
+  getProjectPath() {
+    return this.projectPath;
   }
 }
 
@@ -1302,75 +1348,123 @@ function handleChatConnection(ws, request) {
                     { ...telemetryContext, telemetryEnabled: commandTelemetryEnabled },
                 );
                 writer.telemetryContext = { ...telemetryContext, provider: 'claude', telemetryEnabled: commandTelemetryEnabled };
+                writer.setProjectPath(data.options?.projectPath || data.options?.cwd || null);
 
                 // Use Claude Agents SDK
-                await queryClaudeSDK(data.command, { ...data.options, env: sessionEnv }, writer);
+                const sessionId = data.options?.sessionId || data.sessionId;
+                if (sessionId && isClaudeSDKSessionActive(sessionId)) {
+                    console.log(`[WARN] Session ${sessionId} is already active. Ignoring concurrent request.`);
+                    return;
+                }
+                
+                queryClaudeSDK(data.command, { ...data.options, env: sessionEnv }, writer).catch(error => {
+                    console.error('[ERROR] Claude query error:', error);
+                });
             } else if (data.type === 'cursor-command') {
                 console.log('[DEBUG] Cursor message:', data.command || '[Continue/Resume]');
                 console.log('📁 Project:', data.options?.cwd || 'Unknown');
                 console.log('🔄 Session:', data.options?.sessionId ? 'Resume' : 'New');
                 console.log('🤖 Model:', data.options?.model || 'default');
                 const commandTelemetryEnabled = data.options?.telemetryEnabled !== false;
+                const sessionId = data.options?.sessionId || data.sessionId;
+                
+                if (sessionId && isCursorSessionActive(sessionId)) {
+                    console.log(`[WARN] Cursor session ${sessionId} is already active. Ignoring concurrent request.`);
+                    return;
+                }
+                
                 enqueueConversationTelemetry(
                     {
                         name: 'agent_dialogue_meta',
                         direction: 'user_to_agent',
                         provider: 'cursor',
-                        sessionId: data.options?.sessionId || data.sessionId || null,
+                        sessionId: sessionId || null,
                         projectPath: data.options?.projectPath || data.options?.cwd || null,
                         transportType: data.type,
                     },
                     { ...telemetryContext, telemetryEnabled: commandTelemetryEnabled },
                 );
                 writer.telemetryContext = { ...telemetryContext, provider: 'cursor', telemetryEnabled: commandTelemetryEnabled };
-                await spawnCursor(data.command, { ...data.options, env: sessionEnv }, writer);
+                writer.setProjectPath(data.options?.projectPath || data.options?.cwd || null);
+                spawnCursor(data.command, { ...data.options, env: sessionEnv }, writer).catch(error => {
+                    console.error('[ERROR] Cursor spawn error:', error);
+                });
             } else if (data.type === 'codex-command') {
                 console.log('[DEBUG] Codex message:', data.command || '[Continue/Resume]');
                 console.log('📁 Project:', data.options?.projectPath || data.options?.cwd || 'Unknown');
                 console.log('🔄 Session:', data.options?.sessionId ? 'Resume' : 'New');
                 console.log('🤖 Model:', data.options?.model || 'default');
                 const commandTelemetryEnabled = data.options?.telemetryEnabled !== false;
+                const sessionId = data.options?.sessionId || data.sessionId;
+                
+                if (sessionId && isCodexSessionActive(sessionId)) {
+                    console.log(`[WARN] Codex session ${sessionId} is already active. Ignoring concurrent request.`);
+                    return;
+                }
+                
                 enqueueConversationTelemetry(
                     {
                         name: 'agent_dialogue_meta',
                         direction: 'user_to_agent',
                         provider: 'codex',
-                        sessionId: data.options?.sessionId || data.sessionId || null,
+                        sessionId: sessionId || null,
                         projectPath: data.options?.projectPath || data.options?.cwd || null,
                         transportType: data.type,
                     },
                     { ...telemetryContext, telemetryEnabled: commandTelemetryEnabled },
                 );
                 writer.telemetryContext = { ...telemetryContext, provider: 'codex', telemetryEnabled: commandTelemetryEnabled };
-                await queryCodex(data.command, { ...data.options, env: sessionEnv }, writer);
+                writer.setProjectPath(data.options?.projectPath || data.options?.cwd || null);
+                queryCodex(data.command, { ...data.options, env: sessionEnv }, writer).catch(error => {
+                    console.error('[ERROR] Codex query error:', error);
+                });
             } else if (data.type === 'gemini-command') {
                 console.log('[DEBUG] Gemini message:', data.command || '[Continue/Resume]');
                 console.log('📁 Project:', data.options?.projectPath || data.options?.cwd || 'Unknown');
                 console.log('🔄 Session:', data.options?.sessionId ? 'Resume' : 'New');
                 console.log('🤖 Model:', data.options?.model || 'default');
                 const commandTelemetryEnabled = data.options?.telemetryEnabled !== false;
+                const sessionId = data.options?.sessionId || data.sessionId;
+                
+                if (sessionId && isGeminiSessionActive(sessionId)) {
+                    console.log(`[WARN] Gemini session ${sessionId} is already active. Ignoring concurrent request.`);
+                    return;
+                }
+                
                 enqueueConversationTelemetry(
                     {
                         name: 'agent_dialogue_meta',
                         direction: 'user_to_agent',
                         provider: 'gemini',
-                        sessionId: data.options?.sessionId || data.sessionId || null,
+                        sessionId: sessionId || null,
                         projectPath: data.options?.projectPath || data.options?.cwd || null,
                         transportType: data.type,
                     },
                     { ...telemetryContext, telemetryEnabled: commandTelemetryEnabled },
                 );
                 writer.telemetryContext = { ...telemetryContext, provider: 'gemini', telemetryEnabled: commandTelemetryEnabled };
-                await spawnGemini(data.command, { ...data.options, env: sessionEnv }, writer);
+                writer.setProjectPath(data.options?.projectPath || data.options?.cwd || null);
+                spawnGemini(data.command, { ...data.options, env: sessionEnv }, writer).catch(error => {
+                    console.error('[ERROR] Gemini spawn error:', error);
+                });
             } else if (data.type === 'cursor-resume') {
                 // Backward compatibility: treat as cursor-command with resume and no prompt
                 console.log('[DEBUG] Cursor resume session (compat):', data.sessionId);
-                await spawnCursor('', {
+                const sessionId = data.sessionId;
+                
+                if (sessionId && isCursorSessionActive(sessionId)) {
+                    console.log(`[WARN] Cursor session ${sessionId} is already active. Ignoring concurrent request.`);
+                    return;
+                }
+                
+                spawnCursor('', {
                     sessionId: data.sessionId,
                     resume: true,
                     cwd: data.options?.cwd,
                     env: sessionEnv
-                }, writer);
+                }, writer).catch(error => {
+                    console.error('[ERROR] Cursor resume error:', error);
+                });
             } else if (data.type === 'abort-session') {
                 console.log('[DEBUG] Abort session request:', data.sessionId);
                 const provider = data.provider || 'claude';
@@ -1419,23 +1513,29 @@ function handleChatConnection(ws, request) {
                 const provider = data.provider || 'claude';
                 const sessionId = data.sessionId;
                 let isActive;
+                let startTime = null;
 
                 if (provider === 'cursor') {
                     isActive = isCursorSessionActive(sessionId);
+                    startTime = getCursorSessionStartTime(sessionId);
                 } else if (provider === 'codex') {
                     isActive = isCodexSessionActive(sessionId);
+                    startTime = getCodexSessionStartTime(sessionId);
                 } else if (provider === 'gemini') {
                     isActive = isGeminiSessionActive(sessionId);
+                    startTime = getGeminiSessionStartTime(sessionId);
                 } else {
                     // Use Claude Agents SDK
                     isActive = isClaudeSDKSessionActive(sessionId);
+                    startTime = getClaudeSDKSessionStartTime(sessionId);
                 }
 
                 writer.send({
                     type: 'session-status',
                     sessionId,
                     provider,
-                    isProcessing: isActive
+                    isProcessing: isActive,
+                    startTime
                 });
             } else if (data.type === 'get-active-sessions') {
                 // Get all currently active sessions
@@ -2699,7 +2799,7 @@ async function resolveProjectFilePath(projectRoot, inputPath) {
     return { resolved: direct };
 }
 
-async function getFileTree(dirPath, maxDepth = 3, currentDepth = 0, showHidden = true) {
+async function getFileTree(dirPath, maxDepth = 3, currentDepth = 0, showHidden = true, isBrowsing = false) {
     // Using fsPromises from import
     const items = [];
 
@@ -2710,13 +2810,15 @@ async function getFileTree(dirPath, maxDepth = 3, currentDepth = 0, showHidden =
             // Debug: log all entries including hidden files
             if (!showHidden && entry.name.startsWith('.')) continue;
 
-            // Skip heavy build directories and VCS directories
-            if (entry.name === 'node_modules' ||
+            // Skip heavy build directories and VCS directories unless we are browsing
+            if (!isBrowsing && (
+                entry.name === 'node_modules' ||
                 entry.name === 'dist' ||
                 entry.name === 'build' ||
                 entry.name === '.git' ||
                 entry.name === '.svn' ||
-                entry.name === '.hg') continue;
+                entry.name === '.hg'
+            )) continue;
 
             const itemPath = path.join(dirPath, entry.name);
             let isDirectory = entry.isDirectory();

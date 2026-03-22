@@ -20,37 +20,13 @@ import os from 'os';
 import { CLAUDE_MODELS } from '../shared/modelConstants.js';
 import { ensureProjectSkillLinks } from './projects.js';
 import { writeProjectTemplates } from './templates/index.js';
+import { recordIndexedSession } from './utils/sessionIndex.js';
 
 import { createRequestId, waitForToolApproval, resolveToolApproval as resolvePermApproval, matchesToolPermission } from './utils/permissions.js';
 
 const activeSessions = new Map();
 
 const TOOLS_REQUIRING_INTERACTION = new Set(['AskUserQuestion']);
-
-function encodeProjectPath(projectPath) {
-  return path.resolve(projectPath).replace(/[\\/:\s~_]/g, '-');
-}
-
-async function persistClaudeSessionMetadata(sessionId, projectPath, sessionMode) {
-  if (!sessionId || !projectPath) {
-    return;
-  }
-
-  try {
-    const { sessionDb } = await import('./database/db.js');
-    sessionDb.upsertSession(
-      sessionId,
-      encodeProjectPath(projectPath),
-      'claude',
-      'New Session',
-      new Date().toISOString(),
-      0,
-      { sessionMode: sessionMode || 'research' },
-    );
-  } catch (error) {
-    console.warn('[claude-sdk] Failed to persist session metadata:', error.message);
-  }
-}
 
 function resolveToolApproval(requestId, decision) {
   resolvePermApproval(requestId, decision);
@@ -554,10 +530,18 @@ async function queryClaudeSDK(command, options = {}, ws) {
         // Send session-created event only once for new sessions
         if (!sessionId && !sessionCreatedSent) {
           sessionCreatedSent = true;
-          await persistClaudeSessionMetadata(capturedSessionId, projectDir, sessionMode);
+          if (options.cwd || options.projectPath) {
+            recordIndexedSession({
+              sessionId: capturedSessionId,
+              provider: 'claude',
+              projectPath: options.cwd || options.projectPath,
+              sessionMode: sessionMode || 'research',
+            });
+          }
           ws.send({
             type: 'session-created',
             sessionId: capturedSessionId,
+            provider: 'claude',
             mode: sessionMode || 'research'
           });
         } else {
@@ -574,9 +558,13 @@ async function queryClaudeSDK(command, options = {}, ws) {
 
       // Transform and send message to WebSocket
       const transformedMessage = transformMessage(message);
+      const sessionData = capturedSessionId ? getSession(capturedSessionId) : null;
       ws.send({
         type: 'claude-response',
-        data: transformedMessage,
+        data: {
+          ...transformedMessage,
+          startTime: sessionData?.startTime
+        },
         sessionId: capturedSessionId || sessionId || null
       });
 
@@ -680,6 +668,16 @@ function isClaudeSDKSessionActive(sessionId) {
 }
 
 /**
+ * Gets the start time of an SDK session
+ * @param {string} sessionId - Session identifier
+ * @returns {number|null} Start time in ms or null
+ */
+function getClaudeSDKSessionStartTime(sessionId) {
+  const session = getSession(sessionId);
+  return session ? session.startTime : null;
+}
+
+/**
  * Gets all active SDK session IDs
  * @returns {Array<string>} Array of active session IDs
  */
@@ -692,6 +690,7 @@ export {
   queryClaudeSDK,
   abortClaudeSDKSession,
   isClaudeSDKSessionActive,
+  getClaudeSDKSessionStartTime,
   getActiveClaudeSDKSessions,
   resolveToolApproval
 };
