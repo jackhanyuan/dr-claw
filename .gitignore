@@ -150,7 +150,8 @@ server/data/
 # Search result files
 xhs_results.json
 *_results.json
-__pycache__
+__pycache__/
+*.py[cod]
 
 .pytest_cache
 *.egg-info/

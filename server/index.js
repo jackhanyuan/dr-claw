@@ -31,8 +31,6 @@ const c = {
     dim: (text) => `${colors.dim}${text}${colors.reset}`,
 };
 
-console.log('Requested PORT from env:', process.env.PORT);
-
 import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import os from 'os';
