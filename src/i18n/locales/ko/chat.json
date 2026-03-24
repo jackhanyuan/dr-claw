@@ -334,6 +334,10 @@
         "title": "원고 리뷰",
         "description": "리뷰어 관점에서 방법, 근거, 인용, 문장 품질을 점검합니다."
       },
+      "rebuttalResponse": {
+        "title": "리뷰 응답 작성",
+        "description": "학회별 전략, 안전 검증, 이슈 추적을 활용하여 심사 의견에 전문적으로 응답합니다."
+      },
       "grantProposal": {
         "title": "연구비 제안서",
         "description": "NSF, NIH, DOE, DARPA, NASA 또는 NSFC 대상 연구비 제안서를 기획, 초안 작성, 수정, 재제출합니다."

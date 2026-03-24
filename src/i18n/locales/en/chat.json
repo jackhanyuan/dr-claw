@@ -334,6 +334,10 @@
         "title": "Review a draft",
         "description": "Run a reviewer-style check for methods, evidence, references, and writing quality."
       },
+      "rebuttalResponse": {
+        "title": "Write a rebuttal",
+        "description": "Respond to reviewer comments with venue-aware strategies, safety gates, and issue tracking."
+      },
       "grantProposal": {
         "title": "Grant proposal",
         "description": "Plan, draft, revise, or resubmit a faculty funding proposal for NSF, NIH, DOE, DARPA, NASA, or NSFC."

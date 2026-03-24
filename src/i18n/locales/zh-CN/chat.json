@@ -334,6 +334,10 @@
         "title": "审阅稿件",
         "description": "以审稿视角检查方法、证据、引用与写作质量。"
       },
+      "rebuttalResponse": {
+        "title": "撰写 Rebuttal",
+        "description": "针对审稿意见，使用会场感知策略、安全门控和 Issue 追踪撰写专业回复。"
+      },
       "grantProposal": {
         "title": "基金申请",
         "description": "为 NSF、NIH、DOE、DARPA、NASA 或 NSFC 的基金申请做规划、起草、修改或重投。"

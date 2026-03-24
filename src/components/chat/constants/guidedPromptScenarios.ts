@@ -54,7 +54,14 @@ export const GUIDED_PROMPT_SCENARIOS: GuidedPromptScenario[] = [
     icon: '🧾',
     titleKey: 'guidedStarter.scenarios.manuscriptReview.title',
     descriptionKey: 'guidedStarter.scenarios.manuscriptReview.description',
-    skills: ['inno-paper-reviewer', 'inno-rebuttal', 'inno-reference-audit', 'inno-humanizer'],
+    skills: ['inno-paper-reviewer', 'inno-reference-audit', 'inno-humanizer'],
+  },
+  {
+    id: 'rebuttal-response',
+    icon: '💬',
+    titleKey: 'guidedStarter.scenarios.rebuttalResponse.title',
+    descriptionKey: 'guidedStarter.scenarios.rebuttalResponse.description',
+    skills: ['inno-rebuttal'],
   },
   {
     id: 'grant-proposal',
