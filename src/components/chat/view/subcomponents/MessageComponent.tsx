@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from 'react';
-import { User } from 'lucide-react';
+import { FileImage, FileText, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import SessionProviderLogo from '../../../SessionProviderLogo';
 import type {
@@ -116,6 +116,8 @@ const MessageComponent = memo(({ message, index, prevMessage, createDiff, onFile
     return null;
   }
 
+  const visibleAttachments = Array.isArray(message.attachments) ? message.attachments : [];
+
   return (
     <div
       ref={messageRef}
@@ -202,6 +204,32 @@ const MessageComponent = memo(({ message, index, prevMessage, createDiff, onFile
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                       </svg>
                       <span className="text-sm truncate">{img.name || 'file'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {visibleAttachments.length > 0 && (
+              <div className="mt-2 flex flex-col gap-2">
+                {visibleAttachments.map((attachment, idx) => {
+                  const Icon = attachment.kind === 'pdf' ? FileText : FileImage;
+                  return (
+                    <div
+                      key={`${attachment.name}:${attachment.path || idx}`}
+                      className="flex items-start gap-2 rounded-lg bg-white/10 px-3 py-2"
+                    >
+                      <Icon className="mt-0.5 h-4 w-4 flex-shrink-0 opacity-80" />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">{attachment.name}</div>
+                        <div className="text-xs opacity-75">
+                          {attachment.kind === 'pdf' ? 'PDF uploaded to workspace' : 'Image uploaded to workspace'}
+                        </div>
+                        {attachment.path && (
+                          <div className="mt-1 break-all font-mono text-[11px] opacity-70">
+                            {attachment.path}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

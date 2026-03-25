@@ -59,10 +59,10 @@ interface ChatComposerProps {
   onScrollToBottom: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement> | MouseEvent<HTMLButtonElement> | TouchEvent<HTMLButtonElement>) => void;
   isDragActive: boolean;
-  attachedImages: File[];
-  onRemoveImage: (index: number) => void;
-  uploadingImages: Map<string, number>;
-  imageErrors: Map<string, string>;
+  attachedFiles: File[];
+  onRemoveFile: (index: number) => void;
+  uploadingFiles: Map<string, number>;
+  fileErrors: Map<string, string>;
   showFileDropdown: boolean;
   filteredFiles: MentionableFile[];
   selectedFileIndex: number;
@@ -75,7 +75,7 @@ interface ChatComposerProps {
   frequentCommands: SlashCommand[];
   getRootProps: (...args: unknown[]) => Record<string, unknown>;
   getInputProps: (...args: unknown[]) => Record<string, unknown>;
-  openImagePicker: () => void;
+  openFilePicker: () => void;
   inputHighlightRef: RefObject<HTMLDivElement>;
   renderInputWithMentions: (text: string) => ReactNode;
   textareaRef: RefObject<HTMLTextAreaElement>;
@@ -116,10 +116,10 @@ export default function ChatComposer({
   onScrollToBottom,
   onSubmit,
   isDragActive,
-  attachedImages,
-  onRemoveImage,
-  uploadingImages,
-  imageErrors,
+  attachedFiles,
+  onRemoveFile,
+  uploadingFiles,
+  fileErrors,
   showFileDropdown,
   filteredFiles,
   selectedFileIndex,
@@ -132,7 +132,7 @@ export default function ChatComposer({
   frequentCommands,
   getRootProps,
   getInputProps,
-  openImagePicker,
+  openFilePicker,
   inputHighlightRef,
   renderInputWithMentions,
   textareaRef,
@@ -221,16 +221,16 @@ export default function ChatComposer({
           </div>
         )}
 
-        {attachedImages.length > 0 && (
+        {attachedFiles.length > 0 && (
           <div className="mb-2 p-2 bg-muted/40 rounded-xl">
             <div className="flex flex-wrap gap-2">
-              {attachedImages.map((file, index) => (
+              {attachedFiles.map((file, index) => (
                 <ImageAttachment
                   key={index}
                   file={file}
-                  onRemove={() => onRemoveImage(index)}
-                  uploadProgress={uploadingImages.get(file.name)}
-                  error={imageErrors.get(file.name)}
+                  onRemove={() => onRemoveFile(index)}
+                  uploadProgress={uploadingFiles.get(`${file.name}:${file.size}:${file.lastModified}`)}
+                  error={fileErrors.get(`${file.name}:${file.size}:${file.lastModified}`)}
                 />
               ))}
             </div>
@@ -307,7 +307,7 @@ export default function ChatComposer({
 
             <button
               type="button"
-              onClick={openImagePicker}
+              onClick={openFilePicker}
               className="absolute left-2 top-1/2 transform -translate-y-1/2 p-2 hover:bg-accent/60 rounded-xl transition-colors"
               title={t('input.attachFiles')}
             >

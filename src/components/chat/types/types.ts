@@ -19,6 +19,14 @@ export interface ChatImage {
   mimeType?: string;
 }
 
+export interface ChatAttachment {
+  name: string;
+  kind: 'image' | 'pdf';
+  mimeType?: string;
+  path?: string;
+  extractedTextPreview?: string;
+}
+
 export interface ToolResult {
   content?: unknown;
   isError?: boolean;
@@ -40,6 +48,7 @@ export interface ChatMessage {
   content?: string;
   timestamp: string | number | Date;
   images?: ChatImage[];
+  attachments?: ChatAttachment[];
   reasoning?: string;
   isThinking?: boolean;
   isStreaming?: boolean;

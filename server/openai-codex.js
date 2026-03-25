@@ -225,6 +225,42 @@ function mapPermissionModeToCodexOptions(permissionMode) {
   }
 }
 
+function buildCodexInput(command, attachments) {
+  const imagePaths = Array.isArray(attachments?.imagePaths)
+    ? attachments.imagePaths.filter((value) => typeof value === 'string' && value.trim())
+    : [];
+  const documentPaths = Array.isArray(attachments?.documentPaths)
+    ? attachments.documentPaths.filter((value) => typeof value === 'string' && value.trim())
+    : [];
+
+  if (imagePaths.length === 0 && documentPaths.length === 0) {
+    return command;
+  }
+
+  const textSections = [command];
+
+  if (documentPaths.length > 0) {
+    textSections.push(
+      `Attached workspace PDF path(s):\n${documentPaths
+        .map((filePath) => `- ${filePath}`)
+        .join('\n')}`,
+    );
+  }
+
+  if (imagePaths.length > 0) {
+    textSections.push(
+      imagePaths.length === 1
+        ? 'An image is attached below.'
+        : `There are ${imagePaths.length} attached images below.`,
+    );
+  }
+
+  return [
+    { type: 'text', text: textSections.join('\n\n') },
+    ...imagePaths.map((filePath) => ({ type: 'local_image', path: filePath })),
+  ];
+}
+
 /**
  * Execute a Codex query with streaming
  * @param {string} command - The prompt to send
@@ -238,6 +274,7 @@ export async function queryCodex(command, options = {}, ws) {
     projectPath,
     model,
     env,
+    attachments,
     permissionMode = 'default',
     sessionMode
   } = options;
@@ -299,7 +336,8 @@ export async function queryCodex(command, options = {}, ws) {
     });
 
     // Execute with streaming
-    const streamedTurn = await thread.runStreamed(command, {
+    const codexInput = buildCodexInput(command, attachments);
+    const streamedTurn = await thread.runStreamed(codexInput, {
       signal: abortController.signal
     });
 
