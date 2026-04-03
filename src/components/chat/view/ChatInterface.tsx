@@ -22,6 +22,10 @@ import { Button } from '../../ui/button';
 import type { PendingAutoIntake } from '../../../types/app';
 import { CLAUDE_MODELS, CURSOR_MODELS, CODEX_MODELS, GEMINI_MODELS, OPENROUTER_MODELS } from '../../../../shared/modelConstants';
 import { getProviderDisplayName } from '../utils/chatFormatting';
+import { MessageSquare } from 'lucide-react';
+import CodeEditor from '../../CodeEditor';
+
+const AnyCodeEditor = CodeEditor as any;
 
 
 const DEFAULT_PROVIDER_AVAILABILITY: Record<Provider, ProviderAvailability> = {
@@ -104,7 +108,23 @@ function ChatInterface({
   const { tasksEnabled, isTaskMasterInstalled } = useTasksSettings();
   const { refreshTasks } = useTaskMaster();
   const { t } = useTranslation('chat');
+  const { t: tCommon } = useTranslation('common');
   const [isShellEditPromptOpen, setIsShellEditPromptOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{ name: string; path: string } | null>(null);
+
+  const handleFilePreview = useCallback((filePath: string) => {
+    const normalized = filePath.replace(/\\/g, '/');
+    const root = (selectedProject?.fullPath || selectedProject?.path || '').replace(/\\/g, '/').replace(/\/$/, '');
+    const relative = root && normalized.startsWith(`${root}/`)
+      ? normalized.slice(root.length + 1)
+      : filePath;
+    const name = normalized.split('/').pop() || filePath;
+    setPreviewFile({ name, path: relative });
+  }, [selectedProject]);
+
+  const handleClosePreview = useCallback(() => {
+    setPreviewFile(null);
+  }, []);
 
   const streamBufferRef = useRef('');
   const streamTimerRef = useRef<number | null>(null);
@@ -517,6 +537,10 @@ function ChatInterface({
   }, [selectedProject?.name, selectedSession?.id]);
 
   useEffect(() => {
+    setPreviewFile(null);
+  }, [selectedSession?.id]);
+
+  useEffect(() => {
     if (!isLoading || !canAbortSession) {
       return;
     }
@@ -667,6 +691,25 @@ function ChatInterface({
     <>
       <div className="h-full flex min-h-0 flex-col xl:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {previewFile ? (
+          <div className="relative flex-1 min-h-0 overflow-hidden">
+            <AnyCodeEditor
+              file={previewFile}
+              onClose={handleClosePreview}
+              projectPath={selectedProject?.path}
+              selectedProject={selectedProject}
+              isSidebar
+            />
+            <button
+              onClick={handleClosePreview}
+              className="absolute bottom-4 right-4 z-10 w-10 h-10 rounded-full bg-primary/90 hover:bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+              title={tCommon('navigation.back')}
+            >
+              <MessageSquare className="w-5 h-5" />
+            </button>
+          </div>
+        ) : (
+          <>
         {shouldShowImportedProjectAnalysisPrompt && (
           <div className="mx-auto mt-4 w-full max-w-3xl px-3 sm:px-4">
             <div className="rounded-xl border border-border bg-card/95 shadow-sm px-4 py-4 sm:px-5">
@@ -772,7 +815,7 @@ function ChatInterface({
           loadAllJustFinished={loadAllJustFinished}
           showLoadAllOverlay={showLoadAllOverlay}
           createDiff={createDiff}
-          onFileOpen={onFileOpen}
+          onFileOpen={handleFilePreview}
           onShowSettings={onShowSettings}
           onGrantToolPermission={handleGrantToolPermission}
           onSuggestShellEdit={handleOpenShellEditPrompt}
@@ -876,6 +919,8 @@ function ChatInterface({
           }
         />
 
+          </>
+        )}
         </div>
 
         <ChatContextSidebar
@@ -885,7 +930,7 @@ function ChatInterface({
           provider={provider}
           newSessionMode={newSessionMode}
           chatMessages={chatMessages}
-          onFileOpen={onFileOpen}
+          onFileOpen={handleFilePreview}
         />
       </div>
 
