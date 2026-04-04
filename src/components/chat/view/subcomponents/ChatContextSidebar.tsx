@@ -352,7 +352,7 @@ export default function ChatContextSidebar({
     }
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === '1';
   });
-  const effectiveCollapsed = isCollapsed && !isFilePreview;
+  const effectiveCollapsed = isCollapsed;
   const [collapsedSections, setCollapsedSections] = useState<SidebarSectionState>(() => {
     if (typeof window === 'undefined') {
       return { context: false, tasks: false, review: false };
