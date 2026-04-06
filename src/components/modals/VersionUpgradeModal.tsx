@@ -28,7 +28,7 @@ export default function VersionUpgradeModal({
         ? 'Install the latest Dr. Claw desktop package for your platform.'
         : installMode === 'npm'
             ? t('versionUpdate.npmUpgradeCommand')
-            : 'git checkout main && git pull && npm install';
+            : 'git stash && git checkout main && git pull && npm install';
     const [isUpdating, setIsUpdating] = useState(false);
     const [updateOutput, setUpdateOutput] = useState('');
     const [updateError, setUpdateError] = useState('');
@@ -53,6 +53,12 @@ export default function VersionUpgradeModal({
                 setUpdateOutput(prev => prev + 'Please restart the server to apply changes.\n');
             } else {
                 setUpdateError(data.error || 'Update failed');
+                if (data.output) {
+                    setUpdateOutput(prev => prev + data.output + '\n');
+                }
+                if (data.errorOutput) {
+                    setUpdateOutput(prev => prev + data.errorOutput + '\n');
+                }
                 setUpdateOutput(prev => prev + '\n❌ Update failed: ' + (data.error || 'Unknown error') + '\n');
             }
         } catch (error: any) {

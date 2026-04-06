@@ -677,7 +677,7 @@ app.post('/api/system/update', authenticateToken, async (req, res) => {
 
         // Run the update command based on installation mode
         const updateCommand = installMode === 'git'
-            ? 'git checkout main && git pull && npm install'
+            ? 'git stash && git checkout main && git pull && npm install'
             : `npm install -g ${npmPackageName}@latest`;
 
         const child = spawn('sh', ['-c', updateCommand], {
