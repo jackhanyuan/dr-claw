@@ -11,16 +11,17 @@ import {
   ExternalLink,
   File,
   FileOutput,
-  FileText,
+  FlaskConical,
   Folder,
-  FolderOpen,
   FolderSearch,
   Loader2,
   type LucideIcon,
-  MessageSquare,
 } from 'lucide-react';
+
+import ResearchLab from '../../../ResearchLab';
+import FileTree from '../../../FileTree';
+
 import { cn } from '../../../../lib/utils';
-import { normalizePath } from '../../../../utils/pathUtils';
 import { authenticatedFetch, api } from '../../../../utils/api';
 import type { Project, ProjectSession, SessionMode, SessionProvider } from '../../../../types/app';
 import type { ChatMessage } from '../../types/types';
@@ -37,66 +38,6 @@ type ReviewFilter = 'all' | 'unread' | 'reviewed';
 type SidebarSectionKey = 'context' | 'tasks' | 'review';
 type SidebarSectionState = Record<SidebarSectionKey, boolean>;
 type SectionTone = 'context' | 'tasks' | 'review';
-
-interface FileTreeItem {
-  name: string;
-  path: string;
-  type: 'directory' | 'file';
-  size?: number;
-  modified?: string | null;
-}
-
-function FileTreeNode({
-  item,
-  expandedDirs,
-  onToggleDir,
-  onFileOpen,
-}: {
-  item: FileTreeItem;
-  expandedDirs: Record<string, FileTreeItem[]>;
-  onToggleDir: (dirPath: string) => void;
-  onFileOpen?: (filePath: string) => void;
-}) {
-  const isDir = item.type === 'directory';
-  const isExpanded = !!expandedDirs[item.path];
-  const children = expandedDirs[item.path];
-
-  return (
-    <div>
-      <button
-        type="button"
-        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/60"
-        onClick={() => isDir ? onToggleDir(item.path) : onFileOpen?.(item.path)}
-      >
-        {isDir ? (
-          <>
-            {isExpanded ? <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />}
-            {isExpanded ? <FolderOpen className="h-4 w-4 flex-shrink-0 text-amber-500" /> : <Folder className="h-4 w-4 flex-shrink-0 text-amber-500" />}
-          </>
-        ) : (
-          <>
-            <span className="w-3.5" />
-            <File className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-          </>
-        )}
-        <span className="truncate">{item.name}</span>
-      </button>
-      {isDir && isExpanded && children && (
-        <div className="ml-4 border-l border-border/40 pl-1">
-          {children.map((child) => (
-            <FileTreeNode
-              key={child.path}
-              item={child}
-              expandedDirs={expandedDirs}
-              onToggleDir={onToggleDir}
-              onFileOpen={onFileOpen}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 const SIDEBAR_WIDTH_STORAGE_KEY = 'chat-session-context-width';
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'chat-session-context-collapsed';
@@ -130,6 +71,8 @@ const SECTION_STYLES: Record<SectionTone, {
   },
 };
 
+type SidebarTab = 'context' | 'research' | 'files';
+
 interface ChatContextSidebarProps {
   selectedProject: Project | null;
   selectedSession: ProjectSession | null;
@@ -138,7 +81,10 @@ interface ChatContextSidebarProps {
   newSessionMode?: SessionMode;
   chatMessages: ChatMessage[];
   onFileOpen?: (filePath: string, diffInfo?: unknown) => void;
-  onBackToChat?: () => void;
+  activeSidebarTab?: SidebarTab;
+  onSidebarTabChange?: (tab: SidebarTab) => void;
+  onStartWorkspaceQa?: (project: Project, prompt: string) => void;
+  onStartTask?: (prompt?: string, task?: { stage?: string } | null) => void;
 }
 
 const formatTimeLabel = (value: string, locale?: string) => {
@@ -322,17 +268,12 @@ export default function ChatContextSidebar({
   newSessionMode = 'research',
   chatMessages,
   onFileOpen,
-  onBackToChat,
+  activeSidebarTab = 'context',
+  onSidebarTabChange,
+  onStartWorkspaceQa,
+  onStartTask,
 }: ChatContextSidebarProps) {
   const { t, i18n } = useTranslation('chat');
-  const { t: tCommon } = useTranslation('common');
-  const [sidebarTab, setSidebarTab] = useState<'chat' | 'files'>('chat');
-  const [fileTree, setFileTree] = useState<FileTreeItem[]>([]);
-  const [expandedDirs, setExpandedDirs] = useState<Record<string, FileTreeItem[]>>({});
-  const expandedDirsRef = useRef(expandedDirs);
-  expandedDirsRef.current = expandedDirs;
-  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
-  const [fileTreeError, setFileTreeError] = useState<string | null>(null);
   const [fetchedMessages, setFetchedMessages] = useState<ChatMessage[]>([]);
   const [isLoadingTrace, setIsLoadingTrace] = useState(false);
   const [traceError, setTraceError] = useState<string | null>(null);
@@ -600,59 +541,6 @@ export default function ChatContextSidebar({
     window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth));
   }, [sidebarWidth]);
 
-  // Reset file/tab state on project or session change
-  useEffect(() => {
-    setFileTree([]);
-    setExpandedDirs({});
-    setFileTreeError(null);
-    setSidebarTab('chat');
-  }, [projectName, effectiveSessionId]);
-
-  // Fetch file tree when files tab activates
-  useEffect(() => {
-    if (sidebarTab !== 'files' || !projectName || fileTree.length > 0) {
-      return;
-    }
-    let cancelled = false;
-    setIsLoadingFiles(true);
-    setFileTreeError(null);
-    api.getFiles(projectName, { maxDepth: 1 })
-      .then((res: Response) => res.json())
-      .then((raw: unknown) => {
-        if (!cancelled) {
-          setFileTree(Array.isArray(raw) ? raw : []);
-          setIsLoadingFiles(false);
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setIsLoadingFiles(false);
-          setFileTreeError(err instanceof Error ? err.message : t('sessionContext.fileTreeError'));
-        }
-      });
-    return () => { cancelled = true; };
-  }, [sidebarTab, projectName, t]);
-
-  const toggleDir = useCallback(async (rawDirPath: string) => {
-    const dirPath = normalizePath(rawDirPath).replace(/\/$/, '');
-    if (expandedDirsRef.current[dirPath]) {
-      setExpandedDirs((prev) => {
-        const next = { ...prev };
-        delete next[dirPath];
-        return next;
-      });
-    } else {
-      try {
-        const res = await api.getFiles(projectName, { path: dirPath, maxDepth: 1 });
-        const raw: unknown = await res.json();
-        const data: FileTreeItem[] = Array.isArray(raw) ? raw : [];
-        setExpandedDirs((prev) => ({ ...prev, [dirPath]: data }));
-      } catch (err) {
-        setFileTreeError(err instanceof Error ? err.message : t('sessionContext.fileTreeError'));
-      }
-    }
-  }, [projectName, t]);
-
   if (!selectedProject) {
     return null;
   }
@@ -674,119 +562,111 @@ export default function ChatContextSidebar({
         }`}
         style={!isCollapsed ? { width: `${sidebarWidth}px` } : undefined}
       >
-      <div className="relative flex items-center justify-center border-b border-border/60 px-2 pt-3 pb-2">
-        {isCollapsed ? (
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-border/70 bg-background/85 text-muted-foreground shadow-sm transition-colors hover:text-foreground"
-            title={t('sessionContext.actions.expand')}
-          >
-            <ChevronsLeft className="h-4 w-4" />
-          </button>
-        ) : (
-          <>
-            <div className="inline-flex rounded-lg border border-border bg-muted/50 p-0.5">
-              <button
-                type="button"
-                onClick={() => { setSidebarTab('chat'); onBackToChat?.(); }}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                  sidebarTab === 'chat'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-                {tCommon('tabs.chat')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSidebarTab('files')}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                  sidebarTab === 'files'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <FileText className="h-3.5 w-3.5" />
-                {tCommon('tabs.files')}
-              </button>
+      <div className="border-b border-border/60 px-4 py-3.5">
+        <div className="flex items-center justify-between gap-3">
+          {!isCollapsed && (
+            <div className="inline-flex items-center bg-muted/60 rounded-lg p-[3px] gap-[2px]">
+              {([
+                { id: 'context' as SidebarTab, icon: FolderSearch, labelKey: 'sessionContext.sidebarTabs.context' },
+                { id: 'research' as SidebarTab, icon: FlaskConical, labelKey: 'sessionContext.sidebarTabs.research' },
+                { id: 'files' as SidebarTab, icon: Folder, labelKey: 'sessionContext.sidebarTabs.files' },
+              ]).map((tab) => {
+                const TabIcon = tab.icon;
+                const isActive = tab.id === activeSidebarTab;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => onSidebarTabChange?.(tab.id)}
+                    className={`relative flex items-center gap-1.5 px-2.5 py-[5px] text-xs font-medium rounded-md transition-all duration-150 ${
+                      isActive
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <TabIcon className="w-3.5 h-3.5" strokeWidth={isActive ? 2.2 : 1.8} />
+                    <span>{t(tab.labelKey)}</span>
+                  </button>
+                );
+              })}
             </div>
-            {isLoadingTrace && <Loader2 className="ml-2 h-4 w-4 animate-spin text-muted-foreground" />}
+          )}
+          <div className="flex items-center gap-2">
+            {isLoadingTrace && activeSidebarTab === 'context' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             <button
               type="button"
               onClick={toggleCollapsed}
-              className="absolute right-2 inline-flex h-8 w-8 items-center justify-center rounded-xl border border-border/70 bg-background/85 text-muted-foreground shadow-sm transition-colors hover:text-foreground"
-              title={t('sessionContext.actions.collapse')}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-border/70 bg-background/85 text-muted-foreground shadow-sm transition-colors hover:text-foreground"
+              title={isCollapsed ? t('sessionContext.actions.expand') : t('sessionContext.actions.collapse')}
             >
-              <ChevronsRight className="h-4 w-4" />
+              {isCollapsed ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
             </button>
+          </div>
+        </div>
+
+        {!isCollapsed && activeSidebarTab === 'context' && (
+          <>
+
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          <StatCard label={t('sessionContext.stats.mode')} value={modeLabel} accentClassName="bg-emerald-400/70" />
+          <StatCard label={t('sessionContext.stats.provider')} value={providerLabel} accentClassName="bg-sky-400/70" />
+          <StatCard label={t('sessionContext.stats.contextFiles')} value={summary.contextFiles.length} accentClassName="bg-violet-400/70" />
+          <StatCard label={t('sessionContext.stats.unreadOutputs')} value={summary.unreadCount} accentClassName="bg-amber-400/70" />
+        </div>
+
+        {effectiveProvider === 'codex' && (
+          <div className="mt-3 rounded-2xl border border-amber-200/60 bg-amber-50/80 px-3 py-2.5 text-[11px] leading-5 text-amber-800 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+            {t('sessionContext.codexNotice')}
+          </div>
+        )}
+
+        {traceError && (
+          <div className="mt-3 rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-[11px] leading-5 text-destructive shadow-sm">
+            {t('sessionContext.traceError')}
+          </div>
+        )}
           </>
         )}
       </div>
 
-      {!isCollapsed && sidebarTab === 'chat' ? (
-        <div className="border-b border-border/60 px-4 py-3.5">
-          <div className="min-w-0">
-            <div className="text-sm font-semibold tracking-tight text-foreground">{t('sessionContext.title')}</div>
-            <div className="mt-1 max-w-[42ch] text-[11px] leading-5 text-muted-foreground">
-              {t('sessionContext.description')}
-            </div>
-          </div>
-
-          <div className="mt-3 grid grid-cols-4 gap-2">
-            <StatCard label={t('sessionContext.stats.mode')} value={modeLabel} accentClassName="bg-emerald-400/70" />
-            <StatCard label={t('sessionContext.stats.provider')} value={providerLabel} accentClassName="bg-sky-400/70" />
-            <StatCard label={t('sessionContext.stats.contextFiles')} value={summary.contextFiles.length} accentClassName="bg-violet-400/70" />
-            <StatCard label={t('sessionContext.stats.unreadOutputs')} value={summary.unreadCount} accentClassName="bg-amber-400/70" />
-          </div>
-
-          {effectiveProvider === 'codex' && (
-            <div className="mt-3 rounded-2xl border border-amber-200/60 bg-amber-50/80 px-3 py-2.5 text-[11px] leading-5 text-amber-800 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
-              {t('sessionContext.codexNotice')}
-            </div>
-          )}
-
-          {traceError && (
-            <div className="mt-3 rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-[11px] leading-5 text-destructive shadow-sm">
-              {t('sessionContext.traceError')}
-            </div>
-          )}
+      {isCollapsed ? (
+        <div className="flex flex-1 flex-col items-center gap-2 p-3 xl:pt-4">
+          {([
+            { id: 'context' as SidebarTab, icon: FolderSearch, labelKey: 'sessionContext.sidebarTabs.context' },
+            { id: 'research' as SidebarTab, icon: FlaskConical, labelKey: 'sessionContext.sidebarTabs.research' },
+            { id: 'files' as SidebarTab, icon: Folder, labelKey: 'sessionContext.sidebarTabs.files' },
+          ]).map((tab) => {
+            const TabIcon = tab.icon;
+            const isActive = tab.id === activeSidebarTab;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  onSidebarTabChange?.(tab.id);
+                  // Use the same state setter pattern as toggleCollapsed — the
+                  // setter persists to localStorage so we avoid split writes.
+                  setIsCollapsed((current) => {
+                    if (current && typeof window !== 'undefined') {
+                      window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, '0');
+                    }
+                    return false;
+                  });
+                }}
+                className={cn(
+                  'inline-flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm transition-colors',
+                  isActive
+                    ? 'border-primary/30 bg-primary/10 text-foreground'
+                    : 'border-border/70 bg-background/85 text-muted-foreground hover:text-foreground',
+                )}
+                title={t(tab.labelKey)}
+              >
+                <TabIcon className="h-4 w-4" />
+              </button>
+            );
+          })}
         </div>
-      ) : null}
-
-      {isCollapsed ? null : sidebarTab === 'files' ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3">
-          {fileTreeError && (
-            <div className="mb-2 rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-[11px] leading-5 text-destructive shadow-sm">
-              {fileTreeError}
-            </div>
-          )}
-          {isLoadingFiles ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : fileTree.length === 0 && !fileTreeError ? (
-            <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 px-3 py-3 text-xs text-muted-foreground">
-              {t('sessionContext.empty.files')}
-            </div>
-          ) : (
-            <div className="space-y-0.5">
-              {fileTree.map((item) => (
-                <FileTreeNode
-                  key={item.path}
-                  item={item}
-                  expandedDirs={expandedDirs}
-                  onToggleDir={toggleDir}
-                  onFileOpen={onFileOpen}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
+      ) : activeSidebarTab === 'context' ? (
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
         <section className={`rounded-[22px] border p-3.5 shadow-sm ${SECTION_STYLES.context.panel} ${collapsedSections.context ? '' : 'flex min-h-[220px] flex-1 flex-col overflow-hidden'}`}>
           <SectionHeader
@@ -952,7 +832,25 @@ export default function ChatContextSidebar({
           )}
         </section>
       </div>
-      )}
+      ) : activeSidebarTab === 'research' ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <ResearchLab
+            selectedProject={selectedProject}
+            onNavigateToChat={() => onSidebarTabChange?.('context')}
+            compact
+            onFileOpen={onFileOpen}
+            onStartTask={onStartTask}
+          />
+        </div>
+      ) : activeSidebarTab === 'files' ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <FileTree
+            selectedProject={selectedProject}
+            onFileOpen={onFileOpen}
+            onStartWorkspaceQa={onStartWorkspaceQa}
+          />
+        </div>
+      ) : null}
     </aside>
     </>
   );

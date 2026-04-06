@@ -362,6 +362,11 @@
       "reviewQueue": "No generated files found for this session yet.",
       "files": "No files found"
     },
+    "sidebarTabs": {
+      "context": "Context",
+      "research": "Research",
+      "files": "Files"
+    },
     "preview": {
       "titleFallback": "Preview",
       "selectFile": "Select a file to preview",

@@ -362,6 +362,11 @@
       "reviewQueue": "当前会话还没有发现生成文件。",
       "files": "未找到文件"
     },
+    "sidebarTabs": {
+      "context": "上下文",
+      "research": "研究",
+      "files": "文件"
+    },
     "preview": {
       "titleFallback": "预览",
       "selectFile": "选择一个文件进行预览",
