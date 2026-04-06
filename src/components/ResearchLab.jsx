@@ -2816,9 +2816,11 @@ function ResearchLab({ selectedProject, onNavigateToChat, compact = false, onFil
                     Live Research Workspace
                   </div>
                 )}
-                <h2 className={`font-semibold tracking-tight text-foreground ${compact ? 'text-base' : 'mt-4 text-3xl sm:text-4xl'}`}>
-                  {projectTitle}
-                </h2>
+                {!compact && (
+                  <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                    {projectTitle}
+                  </h2>
+                )}
                 {!compact && (
                   <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
                     Track every stage of the research pipeline, review generated artifacts, and jump back into execution without leaving the lab view.
