@@ -607,7 +607,7 @@ function OverviewCard({ instance, config, researchBrief, compact = false }) {
   return (
     <>
       <div className={`flex h-full flex-col border border-border/60 bg-card/78 shadow-sm backdrop-blur ${compact ? 'gap-2 rounded-xl p-3 border-l-2 border-l-blue-400 dark:border-l-blue-600' : 'gap-4 rounded-[28px] p-5'}`}>
-        <button type="button" onClick={() => setCollapsed(v => !v)} className="flex w-full items-center justify-between gap-2 text-left">
+        <button type="button" onClick={() => setCollapsed(v => !v)} aria-expanded={!collapsed} className="flex w-full items-center justify-between gap-2 text-left">
           <div className="flex items-center gap-2.5">
             {compact ? (
               <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
@@ -778,7 +778,7 @@ function PapersCard({ papers, compact = false }) {
 
   return (
     <div className={`flex h-full flex-col border border-border/60 bg-card/78 shadow-sm backdrop-blur ${compact ? 'rounded-xl p-3 border-l-2 border-l-emerald-400 dark:border-l-emerald-600' : 'rounded-[28px] p-5'}`}>
-      <button type="button" onClick={() => setCollapsed(v => !v)} className="flex w-full items-center justify-between gap-2 text-left">
+      <button type="button" onClick={() => setCollapsed(v => !v)} aria-expanded={!collapsed} className="flex w-full items-center justify-between gap-2 text-left">
         <div className="flex items-center gap-2.5">
           {compact ? (
             <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
@@ -997,7 +997,7 @@ function TaskPipelineBoard({ tasks, isLoading, onNavigateToChat, projectName, on
 
   return (
     <div className={`overflow-hidden border border-border/60 bg-card/78 shadow-sm backdrop-blur ${compact ? 'rounded-xl border-l-2 border-l-cyan-400 dark:border-l-cyan-600' : 'rounded-[30px]'}`}>
-      <button type="button" onClick={() => setBoardCollapsed(v => !v)} className={`flex w-full items-center justify-between text-left ${compact ? 'px-3 py-2.5' : 'border-b border-border/60 bg-gradient-to-r from-sky-50 via-cyan-50 to-emerald-50 px-5 py-4 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950'}`}>
+      <button type="button" onClick={() => setBoardCollapsed(v => !v)} aria-expanded={!boardCollapsed} className={`flex w-full items-center justify-between text-left ${compact ? 'px-3 py-2.5' : 'border-b border-border/60 bg-gradient-to-r from-sky-50 via-cyan-50 to-emerald-50 px-5 py-4 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950'}`}>
         <div className="flex items-center gap-2">
           {compact ? (
             <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-cyan-100 text-cyan-600 dark:bg-cyan-950/50 dark:text-cyan-400">
@@ -1424,28 +1424,33 @@ function SessionStageBoard({
   if (sessions.length === 0) {
     return (
       <div className={`border border-border/60 bg-card/78 shadow-sm backdrop-blur ${compact ? 'rounded-xl p-3 border-l-2 border-l-violet-400 dark:border-l-violet-600' : 'rounded-[30px] p-5'}`}>
-        <div className="flex items-center gap-2.5">
-          {compact ? (
-            <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400">
-              <GitBranch className="w-3.5 h-3.5" />
-            </div>
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-violet-200/70 bg-violet-50/90 text-violet-700 dark:border-violet-900/70 dark:bg-violet-950/30 dark:text-violet-300">
-              <GitBranch className="w-5 h-5" />
-            </div>
-          )}
-          <h3 className={`font-semibold tracking-tight text-foreground ${compact ? 'text-sm' : 'text-base'}`}>Session Stage Links</h3>
-        </div>
-        <div className={`rounded-2xl border border-dashed border-border/60 bg-background/60 text-sm text-muted-foreground ${compact ? 'mt-2 px-3 py-3' : 'mt-4 px-4 py-5'}`}>
-          No indexed sessions yet. Start a conversation in Chat, then come back to assign stages.
-        </div>
+        <button type="button" onClick={() => setSessionBoardCollapsed(v => !v)} aria-expanded={!sessionBoardCollapsed} className="flex w-full items-center justify-between gap-2 text-left">
+          <div className="flex items-center gap-2.5">
+            {compact ? (
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400">
+                <GitBranch className="w-3.5 h-3.5" />
+              </div>
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-violet-200/70 bg-violet-50/90 text-violet-700 dark:border-violet-900/70 dark:bg-violet-950/30 dark:text-violet-300">
+                <GitBranch className="w-5 h-5" />
+              </div>
+            )}
+            <h3 className={`font-semibold tracking-tight text-foreground ${compact ? 'text-sm' : 'text-base'}`}>Session Stage Links</h3>
+          </div>
+          {sessionBoardCollapsed ? <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 flex-shrink-0 text-muted-foreground" />}
+        </button>
+        {!sessionBoardCollapsed && (
+          <div className={`rounded-2xl border border-dashed border-border/60 bg-background/60 text-sm text-muted-foreground ${compact ? 'mt-2 px-3 py-3' : 'mt-4 px-4 py-5'}`}>
+            No indexed sessions yet. Start a conversation in Chat, then come back to assign stages.
+          </div>
+        )}
       </div>
     );
   }
 
   return (
     <div className={`border border-border/60 bg-card/78 shadow-sm backdrop-blur ${compact ? 'rounded-xl p-3 border-l-2 border-l-violet-400 dark:border-l-violet-600' : 'rounded-[30px] p-5'}`}>
-      <button type="button" onClick={() => setSessionBoardCollapsed(v => !v)} className="flex w-full items-center justify-between gap-2 text-left">
+      <button type="button" onClick={() => setSessionBoardCollapsed(v => !v)} aria-expanded={!sessionBoardCollapsed} className="flex w-full items-center justify-between gap-2 text-left">
         <div className="flex items-center gap-2.5">
           {compact ? (
             <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400">
@@ -1590,7 +1595,7 @@ function ArtifactsCard({ artifacts, onSelect, selectedPath, compact = false }) {
 
   return (
     <div className={`border border-border/60 bg-card/78 shadow-sm backdrop-blur ${compact ? 'rounded-xl p-3 border-l-2 border-l-teal-400 dark:border-l-teal-600' : 'rounded-[30px] p-5'}`}>
-      <button type="button" onClick={() => setCardCollapsed(v => !v)} className="flex w-full items-center justify-between gap-2 text-left">
+      <button type="button" onClick={() => setCardCollapsed(v => !v)} aria-expanded={!cardCollapsed} className="flex w-full items-center justify-between gap-2 text-left">
         <div className="flex items-center gap-2.5">
           {compact ? (
             <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-600 dark:bg-teal-950/50 dark:text-teal-400">
@@ -1869,8 +1874,10 @@ function IdeaCard({ projectName, config, projectFileSet, compact = false }) {
   return (
     <div className={`overflow-hidden border border-border/60 bg-card/78 shadow-sm backdrop-blur ${compact ? 'rounded-xl border-l-2 border-l-amber-400 dark:border-l-amber-600' : 'rounded-[30px]'}`}>
       {/* Header */}
-      <div
-        className={`flex cursor-pointer items-center justify-between transition-colors hover:bg-muted/30 ${compact ? 'px-3 py-2.5' : 'border-b border-border/60 bg-gradient-to-r from-amber-50 via-orange-50 to-white px-5 py-4 dark:from-slate-950 dark:via-amber-950/20 dark:to-slate-950'}`}
+      <button
+        type="button"
+        aria-expanded={expanded}
+        className={`flex w-full items-center justify-between text-left transition-colors hover:bg-muted/30 ${compact ? 'px-3 py-2.5' : 'border-b border-border/60 bg-gradient-to-r from-amber-50 via-orange-50 to-white px-5 py-4 dark:from-slate-950 dark:via-amber-950/20 dark:to-slate-950'}`}
         onClick={() => setExpanded(!expanded)}
       >
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -1896,7 +1903,7 @@ function IdeaCard({ projectName, config, projectFileSet, compact = false }) {
           </Button>
           <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expanded ? '' : '-rotate-90'}`} />
         </div>
-      </div>
+      </button>
 
       {/* Body — markdown rendered */}
       {expanded && (
@@ -1949,8 +1956,10 @@ function PaperCard({ projectName, projectRoot, compact = false }) {
 
   return (
     <div className={`overflow-hidden border border-border/60 bg-card/78 shadow-sm backdrop-blur ${compact ? 'rounded-xl border-l-2 border-l-purple-400 dark:border-l-purple-600' : 'rounded-[30px]'}`}>
-      <div
-        className={`flex cursor-pointer items-center justify-between transition-colors hover:bg-muted/30 ${compact ? 'px-3 py-2.5' : 'border-b border-border/60 bg-gradient-to-r from-purple-50 via-fuchsia-50 to-white px-5 py-4 dark:from-slate-950 dark:via-purple-950/20 dark:to-slate-950'}`}
+      <button
+        type="button"
+        aria-expanded={expanded}
+        className={`flex w-full items-center justify-between text-left transition-colors hover:bg-muted/30 ${compact ? 'px-3 py-2.5' : 'border-b border-border/60 bg-gradient-to-r from-purple-50 via-fuchsia-50 to-white px-5 py-4 dark:from-slate-950 dark:via-purple-950/20 dark:to-slate-950'}`}
         onClick={() => setExpanded(!expanded)}
       >
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -1978,7 +1987,7 @@ function PaperCard({ projectName, projectRoot, compact = false }) {
           </Button>
         )}
         <ChevronDown className={`w-4 h-4 text-muted-foreground flex-shrink-0 ml-2 transition-transform ${expanded ? '' : '-rotate-90'}`} />
-      </div>
+      </button>
       {expanded && (
         <div className="border-t border-border">
           {status === 'loading' && (
@@ -2906,6 +2915,7 @@ function ResearchLab({ selectedProject, onNavigateToChat, compact = false, onFil
                         <button
                           type="button"
                           onClick={() => {
+                            // Legacy tasks store prompt at top level; newer ones nest it under guidance
                             const prompt = nextTask.nextActionPrompt || nextTask.guidance?.nextActionPrompt || '';
                             if (onStartTask) {
                               onStartTask(prompt, nextTask);
@@ -2917,7 +2927,7 @@ function ResearchLab({ selectedProject, onNavigateToChat, compact = false, onFil
                           className={`relative inline-flex items-center gap-2 overflow-hidden rounded-full font-semibold text-white shadow-[0_0_20px_rgba(14,165,233,0.35)] transition-all duration-300 hover:shadow-[0_0_30px_rgba(14,165,233,0.5)] hover:scale-[1.03] active:scale-[0.98] bg-gradient-to-r from-cyan-500 via-sky-500 to-emerald-500 hover:from-cyan-400 hover:via-sky-400 hover:to-emerald-400 ${compact ? 'mt-3 px-4 py-2 text-xs' : 'mt-4 px-5 py-2.5 text-sm'}`}
                         >
                           {/* Shine sweep animation */}
-                          <span className="pointer-events-none absolute inset-0 -translate-x-full animate-[shimmer_2.5s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                          <span className="pointer-events-none absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent" />
                           <Sparkles className={`relative ${compact ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} />
                           <span className="relative">Run Next Task</span>
                         </button>

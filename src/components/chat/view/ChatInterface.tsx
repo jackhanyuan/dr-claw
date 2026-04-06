@@ -95,7 +95,6 @@ function ChatInterface({
   autoScrollToBottom,
   sendByCtrlEnter,
   externalMessageUpdate,
-  onShowAllTasks,
   onStartWorkspaceQa,
   pendingAutoIntake,
   clearPendingAutoIntake,

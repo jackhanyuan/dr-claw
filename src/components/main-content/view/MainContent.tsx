@@ -89,6 +89,8 @@ function MainContent({
     }
   }, [selectedProject, currentProject, setCurrentProject]);
 
+  // Migration shim: redirect legacy tab values from before PR #130 merged
+  // Research Lab and Files into the sidebar. Safe to remove after 2026-07-01.
   useEffect(() => {
     if (activeTab === 'tasks' || activeTab === 'researchlab' || activeTab === 'files') {
       setActiveTab('chat');

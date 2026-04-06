@@ -644,10 +644,14 @@ export default function ChatContextSidebar({
                 type="button"
                 onClick={() => {
                   onSidebarTabChange?.(tab.id);
-                  setIsCollapsed(false);
-                  if (typeof window !== 'undefined') {
-                    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, '0');
-                  }
+                  // Use the same state setter pattern as toggleCollapsed — the
+                  // setter persists to localStorage so we avoid split writes.
+                  setIsCollapsed((current) => {
+                    if (current && typeof window !== 'undefined') {
+                      window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, '0');
+                    }
+                    return false;
+                  });
                 }}
                 className={cn(
                   'inline-flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm transition-colors',
