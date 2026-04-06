@@ -12,8 +12,8 @@ if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
   );
 }
 
-// Token lifetime (default: 7 days). Set JWT_EXPIRY to override, e.g. "24h", "30d".
-const JWT_EXPIRY = process.env.JWT_EXPIRY || '7d';
+// Token lifetime (default: 30 days). Set JWT_EXPIRY to override, e.g. "24h", "30d".
+const JWT_EXPIRY = process.env.JWT_EXPIRY || '30d';
 // Validate JWT_EXPIRY at startup to fail fast on misconfiguration
 try {
   jwt.sign({ _validate: true }, 'test', { expiresIn: JWT_EXPIRY });
