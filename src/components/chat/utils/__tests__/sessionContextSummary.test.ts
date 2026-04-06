@@ -287,7 +287,7 @@ describe('deriveSessionContextSummary', () => {
 
   it('prefers session workdir over an unrelated project root when normalizing paths', () => {
     const wrongProjectRoot = '/workspace/demo';
-    const sessionRoot = '/Users/dingjiesong/vibelab/proj-2026-03-06-16-47-13/Experiment';
+    const sessionRoot = '/home/testuser/projects/experiment-2026';
     const messages = [
       {
         type: 'assistant',

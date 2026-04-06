@@ -1,5 +1,4 @@
 import type { ChatMessage } from '../types/types';
-import { normalizePath, isAbsolutePath, toRelativePath } from '../../../utils/pathUtils';
 
 export type SessionReviewState = Record<string, {
   reviewedAt?: string | null;
@@ -406,7 +405,7 @@ const looksLikePathToken = (value: string) => {
   return false;
 };
 
-const shouldTrackDirectoryCandidate = (value: string, source: 'shell' | 'text') => {
+const shouldTrackDirectoryCandidate = (value: string) => {
   const normalized = trimTrailingPathPunctuation(value);
   if (!normalized || !isLikelyDirectoryPath(normalized)) {
     return false;
@@ -497,7 +496,7 @@ const extractShellContext = (
         if (colonPath && looksLikePathToken(colonPath)) {
           const normalized = trimTrailingPathPunctuation(colonPath);
           if (isLikelyDirectoryPath(normalized)) {
-            if (shouldTrackDirectoryCandidate(normalized, 'shell')) {
+            if (shouldTrackDirectoryCandidate(normalized)) {
               directories.add(normalized);
             }
           } else {
@@ -509,7 +508,7 @@ const extractShellContext = (
 
       const normalized = trimTrailingPathPunctuation(token);
       if (isLikelyDirectoryPath(normalized)) {
-        if (shouldTrackDirectoryCandidate(normalized, 'shell')) {
+        if (shouldTrackDirectoryCandidate(normalized)) {
           directories.add(normalized);
         }
       } else {
@@ -518,7 +517,7 @@ const extractShellContext = (
     });
 
   extractPathsFromText(String(toolResult?.content || '')).forEach((nextPath) => {
-    if (shouldTrackDirectoryCandidate(nextPath, 'text')) {
+    if (shouldTrackDirectoryCandidate(nextPath)) {
       directories.add(nextPath);
     } else {
       files.add(nextPath);

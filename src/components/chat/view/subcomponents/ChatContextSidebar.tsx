@@ -309,8 +309,13 @@ export default function ChatContextSidebar({
       return { context: false, tasks: false, review: false };
     }
   });
+  const [expandedLists, setExpandedLists] = useState<Record<string, boolean>>({});
   const [isResizing, setIsResizing] = useState(false);
   const asideRef = useRef<HTMLElement | null>(null);
+
+  const toggleListExpansion = useCallback((key: string) => {
+    setExpandedLists((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   const effectiveSessionId = selectedSession?.id || currentSessionId || null;
   const effectiveProvider = (selectedSession?.__provider as SessionProvider | undefined) || provider;
@@ -691,7 +696,7 @@ export default function ChatContextSidebar({
               </div>
             )}
 
-            {summary.contextFiles.map((file) => (
+            {(expandedLists.contextFiles ? summary.contextFiles : summary.contextFiles.slice(0, 6)).map((file) => (
               <ItemButton
                 key={file.key}
                 label={file.name}
@@ -708,8 +713,13 @@ export default function ChatContextSidebar({
                 }
               />
             ))}
+            {summary.contextFiles.length > 6 && (
+              <button type="button" className="w-full rounded-lg px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors" onClick={() => toggleListExpansion('contextFiles')}>
+                {expandedLists.contextFiles ? t('sessionContext.showLess') : `${summary.contextFiles.length - 6} more...`}
+              </button>
+            )}
 
-            {summary.directories.map((entry) => (
+            {(expandedLists.directories ? summary.directories : summary.directories.slice(0, 3)).map((entry) => (
               <ItemButton
                 key={entry.key}
                 label={entry.label}
@@ -717,8 +727,13 @@ export default function ChatContextSidebar({
                 meta={<ItemBadge>{formatTimeLabel(entry.lastSeenAt, i18n.language)}</ItemBadge>}
               />
             ))}
+            {summary.directories.length > 3 && (
+              <button type="button" className="w-full rounded-lg px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors" onClick={() => toggleListExpansion('directories')}>
+                {expandedLists.directories ? t('sessionContext.showLess') : `${summary.directories.length - 3} more...`}
+              </button>
+            )}
 
-            {summary.skills.map((entry) => (
+            {(expandedLists.skills ? summary.skills : summary.skills.slice(0, 3)).map((entry) => (
               <ItemButton
                 key={entry.key}
                 label={entry.label}
@@ -726,6 +741,11 @@ export default function ChatContextSidebar({
                 meta={<ItemBadge>{formatTimeLabel(entry.lastSeenAt, i18n.language)}</ItemBadge>}
               />
             ))}
+            {summary.skills.length > 3 && (
+              <button type="button" className="w-full rounded-lg px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors" onClick={() => toggleListExpansion('skills')}>
+                {expandedLists.skills ? t('sessionContext.showLess') : `${summary.skills.length - 3} more...`}
+              </button>
+            )}
           </div>
           )}
         </section>
@@ -746,7 +766,7 @@ export default function ChatContextSidebar({
                 {t('sessionContext.empty.taskContext')}
               </div>
             ) : (
-              summary.tasks.map((entry) => (
+              (expandedLists.tasks ? summary.tasks : summary.tasks.slice(0, 6)).map((entry) => (
               <div
                   key={entry.key}
                   className="rounded-xl border border-border/60 bg-gradient-to-r from-background via-background to-sky-50/20 px-2.5 py-2 shadow-sm dark:to-sky-950/10"
@@ -768,6 +788,11 @@ export default function ChatContextSidebar({
                   </div>
                 </div>
               ))
+            )}
+            {summary.tasks.length > 6 && (
+              <button type="button" className="w-full rounded-lg px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors" onClick={() => toggleListExpansion('tasks')}>
+                {expandedLists.tasks ? t('sessionContext.showLess') : `${summary.tasks.length - 6} more...`}
+              </button>
             )}
           </div>
           )}
@@ -812,7 +837,7 @@ export default function ChatContextSidebar({
                 {t('sessionContext.empty.reviewQueue')}
               </div>
             ) : (
-              filteredOutputFiles.map((file) => (
+              (expandedLists.outputFiles ? filteredOutputFiles : filteredOutputFiles.slice(0, 8)).map((file) => (
                 <ItemButton
                   key={file.key}
                   label={file.name}
@@ -833,6 +858,11 @@ export default function ChatContextSidebar({
                   }
                 />
               ))
+            )}
+            {filteredOutputFiles.length > 8 && (
+              <button type="button" className="w-full rounded-lg px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors" onClick={() => toggleListExpansion('outputFiles')}>
+                {expandedLists.outputFiles ? t('sessionContext.showLess') : `${filteredOutputFiles.length - 8} more...`}
+              </button>
             )}
           </div>
           )}

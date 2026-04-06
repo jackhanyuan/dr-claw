@@ -3788,6 +3788,9 @@ async function getCodexSessionMessages(sessionId, limit = null, offset = 0) {
             ));
           }
 
+          // web_search_call events are self-contained display items — no separate result
+          // event and no call_id in the payload. We push directly instead of upsertToolUse
+          // because there is no toolCallId to match against a future tool_result.
           if (entry.type === 'response_item' && entry.payload?.type === 'web_search_call') {
             const normalized = normalizeWebSearchCall(entry.payload);
             messages.push({

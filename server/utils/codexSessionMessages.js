@@ -55,6 +55,8 @@ function parsePatchFilePaths(patchText) {
   String(patchText || '')
     .split('\n')
     .forEach((line) => {
+      // Known limitation: only matches Add/Delete/Update prefixes.
+      // Real-world Codex patches may also use "Create File" — extend if needed.
       const addMatch = line.match(/^\*\*\* (?:Add|Delete|Update) File: (.+)$/);
       if (addMatch?.[1]) {
         files.push(addMatch[1].trim());
@@ -86,7 +88,6 @@ function normalizeCodexFunctionCall(name, rawArguments) {
         command: parsedArguments?.cmd || '',
         workdir: parsedArguments?.workdir || parsedArguments?.cwd || '',
       }),
-      deferUntilEvent: true,
     };
   }
 
@@ -270,13 +271,6 @@ function buildToolResultMessage(timestamp, toolCallId, output, extra = {}) {
   };
 }
 
-function toAbsoluteOrRelativePath(filePath, cwd) {
-  const normalizedPath = normalizePath(filePath);
-  if (!normalizedPath) return '';
-  if (isAbsolutePath(normalizedPath) || !cwd) return normalizedPath;
-  return normalizePath(`${cwd}/${normalizedPath}`);
-}
-
 export {
   buildToolResultMessage,
   buildToolUseMessage,
@@ -288,5 +282,4 @@ export {
   normalizeWebSearchCall,
   parseJsonObject,
   parsePatchFilePaths,
-  toAbsoluteOrRelativePath,
 };
