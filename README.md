@@ -32,10 +32,10 @@
 ## Table of Contents
 
 - [Overview](#overview)
+- [What's New](#whats-new)
 - [Highlights](#highlights)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
-- [OpenRouter](#openrouter)
 - [OpenClaw Integration](#openclaw-integration)
 - [Research Lab - Quick Example](#research-lab-quick-example)
 - [Usage Guide](#usage-guide)
@@ -65,6 +65,33 @@ Dr. Claw is a general-purpose AI research assistant designed to help researchers
 </p>
 
 **Manual work is too slow. Fully automated AI is too generic. Vibe Researching is the new frontier.** Dr. Claw turns your **Research Taste** into outsized outcomes with **Agentic Execution**--so you can move faster, think bigger, and still hold the line on scientific rigor.
+
+</details>
+
+## What's New
+
+- 🖥️ **Desktop App** `2026-04-06` — Dr. Claw now runs as a native desktop app! Grab the `.dmg` or `.exe` from [GitHub Releases](https://github.com/OpenLAIR/dr-claw/releases) and get started in seconds.
+- 🗂️ **Multi-Tab Sidebar** `2026-04-06` — Research Lab and Files now live side-by-side as switchable tabs in the right sidebar — everything you need, one glance away.
+- 📂 **File Preview Overlay** `2026-04-06` — Preview any project file inline with a sleek pill toggle and sidebar browser — no more context-switching!
+- 💬 **Terminal Chat** `2026-04-06` — Love the terminal? Run `dr-claw chat` for a fully agentic session with any OpenRouter model — zero browser required.
+- 🎛️ **Reasoning Controls** `2026-03-30` — Fine-tune your AI's thinking! Codex reasoning effort and Gemini thinking strength selectors are now right in Chat.
+- 🖥️ **Local GPU Detection** `2026-03-30` — Dr. Claw automatically detects your local GPU resources — ready to put that hardware to work.
+- 🌐 **OpenRouter Provider** `2026-03-28` — Unlock hundreds of models (GPT-5, Claude, Gemini, DeepSeek, Llama, Kimi, and more) with a single API key. The world's models at your fingertips!
+- 🔄 **Session Recovery** `2026-03-26` — Crashed mid-session? No sweat — hit the retry button and pick up right where you left off.
+
+<details>
+<summary><strong>Earlier updates</strong></summary>
+
+- 📡 **Auto Port Fallback** `2026-03-26` — Port already taken? Dr. Claw finds a free one automatically. One less thing to worry about.
+- 🏷️ **Smart Prompt Loading** `2026-03-26` — Tasks auto-load into Chat with a handy badge dropdown — just click and go!
+- 🏷️ **Session Stage Tags** `2026-03-26` — Sessions are now auto-tagged by research stage — instantly see where each conversation stands.
+- ✍️ **Rebuttal Skill** `2026-03-24` — New skill for crafting review rebuttals — turn reviewer feedback into publication-ready responses.
+- 🧑‍💻 **Multi-Session Support** `2026-03-21` — Run multiple sessions in parallel with smart naming — juggle projects like a pro!
+- 🗑️ **Trash Bin** `2026-03-21` — Accidentally deleted a project? Relax — it's in the trash, ready to be restored.
+- 🤖 **Dr. Claw CLI & OpenClaw** `2026-03-21` — Full CLI control plus an OpenClaw integration for mobile-friendly, voice-ready research management.
+- 📚 **Reference Library** `2026-03-20` — Manage your papers with a streamlined picker and local Zotero support — your literature, organized.
+- 🔀 **Git Source Control** `2026-03-20` — Stage, commit, diff, and switch branches without ever leaving the app. Version control, built in.
+- 📰 **News Dashboard** `2026-03-14` — Stay on top of research-relevant updates right inside your workspace — never miss a trending paper!
 
 </details>
 
@@ -506,11 +533,12 @@ For the full environment reference and deployment notes, see [docs/configuration
 
 Auto Research email notifications are configured inside the app at **Settings → Email**. The v1 flow supports Claude Code, Codex, Gemini, and OpenRouter engines for unattended task execution, and interrupted runs are automatically reconciled so they do not remain stuck in `running`.
 
-## OpenRouter
+<details>
+<summary><strong>OpenRouter Setup</strong></summary>
 
 [OpenRouter](https://openrouter.ai/) is integrated as a first-class provider, giving you access to **hundreds of models** (GPT-5, Claude, Gemini, DeepSeek, Llama, Mistral, Qwen, Kimi, and more) through a single API key.
 
-### Setup
+#### Setup
 
 1. Get an API key at [openrouter.ai/keys](https://openrouter.ai/keys).
 2. Set the key in one of three ways:
@@ -518,7 +546,7 @@ Auto Research email notifications are configured inside the app at **Settings �
    - **`.env` file:** add `OPENROUTER_API_KEY=sk-or-...` to your project `.env`
    - **UI:** go to **Settings → OpenRouter** and paste your key
 
-### Using OpenRouter in the UI
+#### Using OpenRouter in the UI
 
 1. Open a project and go to **Chat**.
 2. Under **Choose Your AI Assistant**, click **OpenRouter**.
@@ -527,7 +555,7 @@ Auto Research email notifications are configured inside the app at **Settings �
 
 OpenRouter is also available in **Auto Research** on the Project Dashboard — select it as the provider and pick any model.
 
-### Using OpenRouter in the Terminal
+#### Using OpenRouter in the Terminal
 
 No browser needed. The `dr-claw chat` CLI gives you a fully agentic terminal session:
 
@@ -541,7 +569,7 @@ node server/cli.js chat --model deepseek/deepseek-r1 --key sk-or-your-key
 
 The CLI supports the same tools as the UI (file I/O, shell, grep, glob, web search, web fetch, todo). Type your message and the agent will execute multi-step research tasks autonomously.
 
-### Default Model
+#### Default Model
 
 Set `OPENROUTER_MODEL` in `.env` to change the default model used when none is specified:
 
@@ -550,6 +578,8 @@ OPENROUTER_MODEL=moonshotai/kimi-k2.5
 ```
 
 If unset, the default is `anthropic/claude-sonnet-4`.
+
+</details>
 
 <a id="research-lab-quick-example"></a>
 
