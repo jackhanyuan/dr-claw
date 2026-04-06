@@ -327,6 +327,7 @@
     "description": "这里展示本次会话轨迹中实际出现过的文件、任务和输出。",
     "codexNotice": "Codex 的可见性目前并不完整，取决于运行时当前暴露的工具事件。",
     "traceError": "完整会话轨迹加载失败，当前仅显示内存中的实时消息。",
+    "fileTreeError": "加载项目文件失败。",
     "stats": {
       "mode": "模式",
       "provider": "提供方",

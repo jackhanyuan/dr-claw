@@ -1,4 +1,5 @@
 import type { ChatMessage } from '../types/types';
+import { normalizePath, isAbsolutePath, toRelativePath } from '../../../utils/pathUtils';
 
 export type SessionReviewState = Record<string, {
   reviewedAt?: string | null;
@@ -59,12 +60,6 @@ type TaskAccumulator = {
   lastSeenAt: string;
 };
 
-const WINDOWS_ABS_PATTERN = /^[a-z]:\//i;
-
-const normalizePath = (value: string) => value.replace(/\\/g, '/').replace(/\/+/g, '/');
-
-const isAbsolutePath = (value: string) => value.startsWith('/') || WINDOWS_ABS_PATTERN.test(value);
-
 const toIsoTimestamp = (value: string | number | Date | undefined): string => {
   const date = value ? new Date(value) : new Date();
   return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
@@ -93,20 +88,6 @@ const parseJsonValue = (value: unknown): any => {
   } catch {
     return null;
   }
-};
-
-const toRelativePath = (filePath: string, projectRoot: string): string | null => {
-  const normalizedPath = normalizePath(String(filePath || '').trim());
-  if (!normalizedPath) {
-    return null;
-  }
-
-  const normalizedRoot = normalizePath(String(projectRoot || '').trim()).replace(/\/$/, '');
-  if (normalizedRoot && normalizedPath.startsWith(`${normalizedRoot}/`)) {
-    return normalizedPath.slice(normalizedRoot.length + 1);
-  }
-
-  return normalizedPath.replace(/^\.\//, '');
 };
 
 const toAbsolutePath = (filePath: string, projectRoot: string): string | null => {

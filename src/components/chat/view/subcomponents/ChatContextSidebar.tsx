@@ -20,6 +20,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
+import { normalizePath } from '../../../../utils/pathUtils';
 import { authenticatedFetch, api } from '../../../../utils/api';
 import type { Project, ProjectSession, SessionMode, SessionProvider } from '../../../../types/app';
 import type { ChatMessage } from '../../types/types';
@@ -137,7 +138,6 @@ interface ChatContextSidebarProps {
   newSessionMode?: SessionMode;
   chatMessages: ChatMessage[];
   onFileOpen?: (filePath: string, diffInfo?: unknown) => void;
-  isFilePreview?: boolean;
   onBackToChat?: () => void;
 }
 
@@ -322,7 +322,6 @@ export default function ChatContextSidebar({
   newSessionMode = 'research',
   chatMessages,
   onFileOpen,
-  isFilePreview = false,
   onBackToChat,
 }: ChatContextSidebarProps) {
   const { t, i18n } = useTranslation('chat');
@@ -333,6 +332,7 @@ export default function ChatContextSidebar({
   const expandedDirsRef = useRef(expandedDirs);
   expandedDirsRef.current = expandedDirs;
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [fileTreeError, setFileTreeError] = useState<string | null>(null);
   const [fetchedMessages, setFetchedMessages] = useState<ChatMessage[]>([]);
   const [isLoadingTrace, setIsLoadingTrace] = useState(false);
   const [traceError, setTraceError] = useState<string | null>(null);
@@ -352,7 +352,6 @@ export default function ChatContextSidebar({
     }
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === '1';
   });
-  const effectiveCollapsed = isCollapsed;
   const [collapsedSections, setCollapsedSections] = useState<SidebarSectionState>(() => {
     if (typeof window === 'undefined') {
       return { context: false, tasks: false, review: false };
@@ -605,6 +604,7 @@ export default function ChatContextSidebar({
   useEffect(() => {
     setFileTree([]);
     setExpandedDirs({});
+    setFileTreeError(null);
     setSidebarTab('chat');
   }, [projectName, effectiveSessionId]);
 
@@ -615,23 +615,26 @@ export default function ChatContextSidebar({
     }
     let cancelled = false;
     setIsLoadingFiles(true);
+    setFileTreeError(null);
     api.getFiles(projectName, { maxDepth: 1 })
       .then((res: Response) => res.json())
-      .then((data: FileTreeItem[]) => {
+      .then((raw: unknown) => {
         if (!cancelled) {
-          setFileTree(data);
+          setFileTree(Array.isArray(raw) ? raw : []);
           setIsLoadingFiles(false);
         }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (!cancelled) {
           setIsLoadingFiles(false);
+          setFileTreeError(err instanceof Error ? err.message : t('sessionContext.fileTreeError'));
         }
       });
     return () => { cancelled = true; };
-  }, [sidebarTab, projectName]);
+  }, [sidebarTab, projectName, t]);
 
-  const toggleDir = useCallback(async (dirPath: string) => {
+  const toggleDir = useCallback(async (rawDirPath: string) => {
+    const dirPath = normalizePath(rawDirPath).replace(/\/$/, '');
     if (expandedDirsRef.current[dirPath]) {
       setExpandedDirs((prev) => {
         const next = { ...prev };
@@ -641,13 +644,14 @@ export default function ChatContextSidebar({
     } else {
       try {
         const res = await api.getFiles(projectName, { path: dirPath, maxDepth: 1 });
-        const data: FileTreeItem[] = await res.json();
+        const raw: unknown = await res.json();
+        const data: FileTreeItem[] = Array.isArray(raw) ? raw : [];
         setExpandedDirs((prev) => ({ ...prev, [dirPath]: data }));
-      } catch {
-        // ignore
+      } catch (err) {
+        setFileTreeError(err instanceof Error ? err.message : t('sessionContext.fileTreeError'));
       }
     }
-  }, [projectName]);
+  }, [projectName, t]);
 
   if (!selectedProject) {
     return null;
@@ -655,7 +659,7 @@ export default function ChatContextSidebar({
 
   return (
     <>
-      {!effectiveCollapsed && (
+      {!isCollapsed && (
         <div
           onMouseDown={handleResizeStart}
           className="hidden xl:block xl:w-1 xl:flex-shrink-0 xl:cursor-col-resize xl:bg-border/40 xl:transition-colors xl:hover:bg-primary/25"
@@ -666,12 +670,12 @@ export default function ChatContextSidebar({
       <aside
         ref={asideRef}
         className={`flex min-h-0 w-full flex-col border-t border-border/60 bg-gradient-to-b from-card via-card to-muted/20 backdrop-blur xl:flex-shrink-0 xl:border-l xl:border-t-0 ${
-          effectiveCollapsed ? 'xl:w-[56px]' : ''
+          isCollapsed ? 'xl:w-[56px]' : ''
         }`}
-        style={!effectiveCollapsed ? { width: `${sidebarWidth}px` } : undefined}
+        style={!isCollapsed ? { width: `${sidebarWidth}px` } : undefined}
       >
       <div className="relative flex items-center justify-center border-b border-border/60 px-2 pt-3 pb-2">
-        {effectiveCollapsed ? (
+        {isCollapsed ? (
           <button
             type="button"
             onClick={toggleCollapsed}
@@ -710,6 +714,7 @@ export default function ChatContextSidebar({
                 {tCommon('tabs.files')}
               </button>
             </div>
+            {isLoadingTrace && <Loader2 className="ml-2 h-4 w-4 animate-spin text-muted-foreground" />}
             <button
               type="button"
               onClick={toggleCollapsed}
@@ -722,13 +727,10 @@ export default function ChatContextSidebar({
         )}
       </div>
 
-      {!effectiveCollapsed && sidebarTab === 'chat' ? (
+      {!isCollapsed && sidebarTab === 'chat' ? (
         <div className="border-b border-border/60 px-4 py-3.5">
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <div className="text-sm font-semibold tracking-tight text-foreground">{t('sessionContext.title')}</div>
-              {isLoadingTrace && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-            </div>
+            <div className="text-sm font-semibold tracking-tight text-foreground">{t('sessionContext.title')}</div>
             <div className="mt-1 max-w-[42ch] text-[11px] leading-5 text-muted-foreground">
               {t('sessionContext.description')}
             </div>
@@ -755,13 +757,18 @@ export default function ChatContextSidebar({
         </div>
       ) : null}
 
-      {effectiveCollapsed ? null : sidebarTab === 'files' ? (
+      {isCollapsed ? null : sidebarTab === 'files' ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3">
+          {fileTreeError && (
+            <div className="mb-2 rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-[11px] leading-5 text-destructive shadow-sm">
+              {fileTreeError}
+            </div>
+          )}
           {isLoadingFiles ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          ) : fileTree.length === 0 ? (
+          ) : fileTree.length === 0 && !fileTreeError ? (
             <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 px-3 py-3 text-xs text-muted-foreground">
               {t('sessionContext.empty.files')}
             </div>

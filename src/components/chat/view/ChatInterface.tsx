@@ -24,8 +24,7 @@ import { CLAUDE_MODELS, CURSOR_MODELS, CODEX_MODELS, GEMINI_MODELS, OPENROUTER_M
 import { getProviderDisplayName } from '../utils/chatFormatting';
 import CodeEditor from '../../CodeEditor';
 import type { EditingFile } from '../../main-content/types/types';
-
-const AnyCodeEditor = CodeEditor as any;
+import { normalizePath, toRelativePath, isSafePath, fileNameFromPath } from '../../../utils/pathUtils';
 
 
 const DEFAULT_PROVIDER_AVAILABILITY: Record<Provider, ProviderAvailability> = {
@@ -112,12 +111,10 @@ function ChatInterface({
   const [previewFile, setPreviewFile] = useState<EditingFile | null>(null);
 
   const handleFilePreview = useCallback((filePath: string) => {
-    const normalized = filePath.replace(/\\/g, '/');
-    const root = (selectedProject?.fullPath || selectedProject?.path || '').replace(/\\/g, '/').replace(/\/$/, '');
-    const relative = root && normalized.startsWith(`${root}/`)
-      ? normalized.slice(root.length + 1)
-      : normalized;
-    const name = normalized.split('/').pop() || normalized;
+    const root = selectedProject?.fullPath || selectedProject?.path || '';
+    const relative = toRelativePath(filePath, root);
+    if (!relative || !isSafePath(relative)) return;
+    const name = fileNameFromPath(normalizePath(filePath));
     setPreviewFile({ name, path: relative, projectName: selectedProject?.name });
   }, [selectedProject]);
 
@@ -537,7 +534,7 @@ function ChatInterface({
 
   useEffect(() => {
     setPreviewFile(null);
-  }, [selectedSession?.id]);
+  }, [selectedSession?.id, selectedProject?.name]);
 
   useEffect(() => {
     if (!isLoading || !canAbortSession) {
@@ -692,7 +689,7 @@ function ChatInterface({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {previewFile && (
             <div className="flex-1 min-h-0 overflow-hidden">
-              <AnyCodeEditor
+              <CodeEditor
                 file={previewFile}
                 onClose={handleClosePreview}
                 projectPath={selectedProject?.path}
@@ -922,7 +919,8 @@ function ChatInterface({
           newSessionMode={newSessionMode}
           chatMessages={chatMessages}
           onFileOpen={handleFilePreview}
-          isFilePreview={!!previewFile}
+          // sidebarTab and file preview are intentionally independent — the sidebar tab
+          // does not auto-switch when a chat message file link opens the preview overlay.
           onBackToChat={handleClosePreview}
         />
       </div>
