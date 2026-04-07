@@ -124,7 +124,7 @@ export default function ChatInputControls({
 
       <TokenUsagePie
         used={tokenBudget?.used}
-        total={tokenBudget?.total || parseInt(import.meta.env.VITE_CONTEXT_WINDOW) || 160000}
+        total={tokenBudget?.total || parseInt(import.meta.env.VITE_CONTEXT_WINDOW) || 200000}
         unsupportedContext={tokenBudget?.unsupportedContext}
         message={tokenBudget?.message}
       />
