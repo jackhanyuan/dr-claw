@@ -6,8 +6,10 @@ import PermissionRequestsBanner from './PermissionRequestsBanner';
 import ChatInputControls from './ChatInputControls';
 import ReferencePicker from '../../../references/view/ReferencePicker';
 import PromptBadgeDropdown from './PromptBadgeDropdown';
+import SessionProviderLogo from '../../../SessionProviderLogo';
+import { Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type {
   ChangeEvent,
   ClipboardEvent,
@@ -23,6 +25,11 @@ import type {
 import type { CodexReasoningEffortId } from '../../constants/codexReasoningEfforts';
 import type { GeminiThinkingModeId } from '../../../../../shared/geminiThinkingSupport';
 import type { AttachedPrompt, PendingPermissionRequest, PermissionMode, Provider, TokenBudget } from '../../types/types';
+import type { ProviderAvailability } from '../../types/types';
+import type { SessionMode, SessionProvider } from '../../../../types/app';
+import { CLAUDE_MODELS, CURSOR_MODELS, CODEX_MODELS, GEMINI_MODELS, LOCAL_MODELS, OPENROUTER_MODELS } from '../../../../../shared/modelConstants';
+import { authenticatedFetch } from '../../../../utils/api';
+import { Search, Plus, X } from 'lucide-react';
 
 interface MentionableFile {
   name: string;
@@ -41,6 +48,40 @@ interface SlashCommand {
   type?: string;
   metadata?: Record<string, unknown>;
   [key: string]: unknown;
+}
+
+type ProviderDef = {
+  id: SessionProvider;
+  name: string;
+  accent: string;
+  ring: string;
+  check: string;
+};
+
+const PROVIDERS: ProviderDef[] = [
+  { id: 'claude', name: 'Claude Code', accent: 'border-primary', ring: 'ring-primary/15', check: 'bg-primary text-primary-foreground' },
+  { id: 'gemini', name: 'Gemini CLI', accent: 'border-blue-500 dark:border-blue-400', ring: 'ring-blue-500/15', check: 'bg-blue-500 text-white' },
+  { id: 'codex', name: 'Codex', accent: 'border-emerald-600 dark:border-emerald-400', ring: 'ring-emerald-600/15', check: 'bg-emerald-600 dark:bg-emerald-500 text-white' },
+  { id: 'openrouter', name: 'OpenRouter', accent: 'border-violet-500 dark:border-violet-400', ring: 'ring-violet-500/15', check: 'bg-violet-500 text-white' },
+  { id: 'local', name: 'Local GPU', accent: 'border-emerald-500 dark:border-emerald-400', ring: 'ring-emerald-500/15', check: 'bg-emerald-500 text-white' },
+];
+
+function getModelConfig(p: SessionProvider) {
+  if (p === 'claude') return CLAUDE_MODELS;
+  if (p === 'codex') return CODEX_MODELS;
+  if (p === 'gemini') return GEMINI_MODELS;
+  if (p === 'openrouter') return OPENROUTER_MODELS;
+  if (p === 'local') return LOCAL_MODELS;
+  return CURSOR_MODELS;
+}
+
+function getModelValue(p: SessionProvider, c: string, cu: string, co: string, g: string, or: string, lo: string) {
+  if (p === 'claude') return c;
+  if (p === 'codex') return co;
+  if (p === 'gemini') return g;
+  if (p === 'openrouter') return or;
+  if (p === 'local') return lo;
+  return cu;
 }
 
 interface ChatComposerProps {
@@ -112,6 +153,22 @@ interface ChatComposerProps {
   attachedPrompt: AttachedPrompt | null;
   onRemoveAttachedPrompt: () => void;
   onUpdateAttachedPrompt: (promptText: string) => void;
+  centered?: boolean;
+  // Provider selection props (used when centered)
+  setProvider?: (next: SessionProvider) => void;
+  claudeModel?: string;
+  setClaudeModel?: (model: string) => void;
+  cursorModel?: string;
+  setCursorModel?: (model: string) => void;
+  setCodexModel?: (model: string) => void;
+  setGeminiModel?: (model: string) => void;
+  openrouterModel?: string;
+  setOpenrouterModel?: (model: string) => void;
+  localModel?: string;
+  setLocalModel?: (model: string) => void;
+  providerAvailability?: Record<SessionProvider, ProviderAvailability>;
+  newSessionMode?: SessionMode;
+  onNewSessionModeChange?: (mode: SessionMode) => void;
 }
 
 export default function ChatComposer({
@@ -180,6 +237,21 @@ export default function ChatComposer({
   attachedPrompt,
   onRemoveAttachedPrompt,
   onUpdateAttachedPrompt,
+  centered,
+  setProvider,
+  claudeModel: claudeModelProp,
+  setClaudeModel,
+  cursorModel: cursorModelProp,
+  setCursorModel,
+  setCodexModel,
+  setGeminiModel,
+  openrouterModel: openrouterModelProp,
+  setOpenrouterModel,
+  localModel: localModelProp,
+  setLocalModel,
+  providerAvailability,
+  newSessionMode,
+  onNewSessionModeChange,
 }: ChatComposerProps) {
   const { t } = useTranslation('chat');
   const [showReferencePicker, setShowReferencePicker] = useState(false);
@@ -201,50 +273,124 @@ export default function ChatComposer({
     ? 'max-sm:fixed max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:z-50 max-sm:bg-background max-sm:shadow-[0_-4px_20px_rgba(0,0,0,0.15)]'
     : '';
 
+  // Provider/model handling for centered mode
+  const sessionProvider = provider as SessionProvider;
+  const currentModel = centered
+    ? getModelValue(sessionProvider, claudeModelProp || '', cursorModelProp || '', codexModel, geminiModel, openrouterModelProp || '', localModelProp || '')
+    : '';
+
+  const [ollamaModels, setOllamaModels] = useState<Array<{ value: string; label: string }>>([]);
+  const [isLoadingOllamaModels, setIsLoadingOllamaModels] = useState(false);
+
+  useEffect(() => {
+    if (!centered || sessionProvider !== 'local') return;
+    setIsLoadingOllamaModels(true);
+    const serverUrl = localStorage.getItem('local-gpu-server-url') || 'http://localhost:11434';
+    authenticatedFetch(`/api/cli/local/models?serverUrl=${encodeURIComponent(serverUrl)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.models?.length) {
+          const opts = data.models.map((m: any) => ({
+            value: m.name,
+            label: `${m.displayName || m.name}${m.size ? ` (${m.size})` : ''}`,
+          }));
+          setOllamaModels(opts);
+          if (!localModelProp && opts.length > 0) {
+            const small = data.models.find((m: any) => m.sizeB && m.sizeB <= 14);
+            const pick = small ? small.name : opts[0].value;
+            setLocalModel?.(pick);
+            localStorage.setItem('local-model', pick);
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingOllamaModels(false));
+  }, [centered, sessionProvider, localModelProp, setLocalModel]);
+
+  const rawModelConfig = centered ? getModelConfig(sessionProvider) : null;
+  const modelConfig = centered && rawModelConfig
+    ? (sessionProvider === 'local' && ollamaModels.length > 0 ? { ...rawModelConfig, OPTIONS: ollamaModels } : rawModelConfig)
+    : null;
+
+  const selectProvider = (next: SessionProvider) => {
+    if (providerAvailability?.[next]?.cliAvailable === false) return;
+    setProvider?.(next);
+    localStorage.setItem('selected-provider', next);
+    setTimeout(() => textareaRef.current?.focus(), 100);
+  };
+
+  const handleModelChange = (value: string) => {
+    if (sessionProvider === 'claude') { setClaudeModel?.(value); localStorage.setItem('claude-model', value); }
+    else if (sessionProvider === 'codex') { setCodexModel?.(value); localStorage.setItem('codex-model', value); }
+    else if (sessionProvider === 'gemini') { setGeminiModel?.(value); localStorage.setItem('gemini-model', value); }
+    else if (sessionProvider === 'openrouter') { setOpenrouterModel?.(value); localStorage.setItem('openrouter-model', value); }
+    else if (sessionProvider === 'local') { setLocalModel?.(value); localStorage.setItem('local-model', value); }
+    else { setCursorModel?.(value); localStorage.setItem('cursor-model', value); }
+  };
+
+  const sessionModeChoices: Array<{ id: SessionMode; titleKey: string }> = [
+    { id: 'research', titleKey: 'session.mode.researchTitle' },
+    { id: 'workspace_qa', titleKey: 'session.mode.workspaceQaTitle' },
+  ];
+
   return (
-    <div className={`p-2 sm:p-4 md:p-4 flex-shrink-0 pb-2 sm:pb-4 md:pb-6 ${mobileFloatingClass}`}>
-      <div className="max-w-5xl mx-auto mb-3">
-        <PermissionRequestsBanner
-          provider={provider}
-          pendingPermissionRequests={pendingPermissionRequests}
-          handlePermissionDecision={handlePermissionDecision}
-          handleGrantToolPermission={handleGrantToolPermission}
-        />
-
-        {!hasQuestionPanel && <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
-          <ClaudeStatus
-            status={claudeStatus}
-            isLoading={isLoading}
-            onAbort={onAbortSession}
+    <div className={`p-2 sm:p-4 md:p-4 flex-shrink-0 ${centered ? 'pb-2 sm:pb-3' : 'pb-2 sm:pb-4 md:pb-6'} ${mobileFloatingClass}`}>
+      {/* Controls above the text box — only when NOT centered */}
+      {!centered && (
+        <div className="max-w-5xl mx-auto mb-3">
+          <PermissionRequestsBanner
             provider={provider}
+            pendingPermissionRequests={pendingPermissionRequests}
+            handlePermissionDecision={handlePermissionDecision}
+            handleGrantToolPermission={handleGrantToolPermission}
           />
-          <ChatInputControls
-          permissionMode={permissionMode}
-          onModeSwitch={onModeSwitch}
-          provider={provider}
-          codexModel={codexModel}
-          geminiModel={geminiModel}
-          thinkingMode={thinkingMode}
-          setThinkingMode={setThinkingMode}
-          codexReasoningEffort={codexReasoningEffort}
-          setCodexReasoningEffort={setCodexReasoningEffort}
-          geminiThinkingMode={geminiThinkingMode}
-          setGeminiThinkingMode={setGeminiThinkingMode}
-          tokenBudget={tokenBudget}
-          slashCommandsCount={slashCommandsCount}
-          onToggleCommandMenu={onToggleCommandMenu}
-          hasInput={hasInput}
-          onClearInput={onClearInput}
-          isUserScrolledUp={isUserScrolledUp}
-          hasMessages={hasMessages}
-          onScrollToBottom={onScrollToBottom}
-        />
-        </div>}
-      </div>
 
-      {!hasQuestionPanel && <form onSubmit={onSubmit as (event: FormEvent<HTMLFormElement>) => void} className="relative max-w-5xl mx-auto">
+          {!hasQuestionPanel && <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
+            <ClaudeStatus
+              status={claudeStatus}
+              isLoading={isLoading}
+              onAbort={onAbortSession}
+              provider={provider}
+            />
+            <ChatInputControls
+              permissionMode={permissionMode}
+              onModeSwitch={onModeSwitch}
+              provider={provider}
+              codexModel={codexModel}
+              geminiModel={geminiModel}
+              thinkingMode={thinkingMode}
+              setThinkingMode={setThinkingMode}
+              codexReasoningEffort={codexReasoningEffort}
+              setCodexReasoningEffort={setCodexReasoningEffort}
+              geminiThinkingMode={geminiThinkingMode}
+              setGeminiThinkingMode={setGeminiThinkingMode}
+              tokenBudget={tokenBudget}
+              slashCommandsCount={slashCommandsCount}
+              onToggleCommandMenu={onToggleCommandMenu}
+              hasInput={hasInput}
+              onClearInput={onClearInput}
+              isUserScrolledUp={isUserScrolledUp}
+              hasMessages={hasMessages}
+              onScrollToBottom={onScrollToBottom}
+            />
+          </div>}
+        </div>
+      )}
+
+      {centered && (
+        <div className="max-w-5xl mx-auto mb-3">
+          <PermissionRequestsBanner
+            provider={provider}
+            pendingPermissionRequests={pendingPermissionRequests}
+            handlePermissionDecision={handlePermissionDecision}
+            handleGrantToolPermission={handleGrantToolPermission}
+          />
+        </div>
+      )}
+
+      {!hasQuestionPanel && <form onSubmit={onSubmit as (event: FormEvent<HTMLFormElement>) => void} className={`relative mx-auto ${centered ? 'max-w-3xl' : 'max-w-5xl'}`}>
         {isDragActive && (
-          <div className="absolute inset-0 bg-primary/15 border-2 border-dashed border-primary/50 rounded-2xl flex items-center justify-center z-50">
+          <div className="absolute inset-0 bg-primary/15 border-2 border-dashed border-primary/50 rounded-3xl flex items-center justify-center z-50">
             <div className="bg-card rounded-xl p-4 shadow-lg border border-border/30">
               <svg className="w-8 h-8 text-primary mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -333,9 +479,9 @@ export default function ChatComposer({
 
         <div
           {...getRootProps()}
-          className={`relative bg-card/80 backdrop-blur-sm rounded-2xl shadow-sm border border-border/50 focus-within:shadow-md focus-within:border-primary/30 focus-within:ring-1 focus-within:ring-primary/15 transition-all duration-200 overflow-hidden ${
-            isTextareaExpanded ? 'chat-input-expanded' : ''
-          }`}
+          className={`relative bg-card/80 backdrop-blur-sm rounded-3xl shadow-sm border border-border/50 focus-within:shadow-md focus-within:border-primary/30 focus-within:ring-1 focus-within:ring-primary/15 transition-all duration-200 ${
+            centered ? '' : 'overflow-hidden'
+          } ${isTextareaExpanded ? 'chat-input-expanded' : ''}`}
         >
           <input {...getInputProps()} />
           {attachedPrompt && (
@@ -345,8 +491,8 @@ export default function ChatComposer({
               onUpdate={onUpdateAttachedPrompt}
             />
           )}
-          <div ref={inputHighlightRef} aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
-            <div className={`chat-input-placeholder block w-full ${projectName ? 'pl-[5.5rem]' : 'pl-12'} pr-20 sm:pr-40 py-1.5 sm:py-4 text-transparent text-base leading-6 whitespace-pre-wrap break-words`}>
+          <div ref={inputHighlightRef} aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
+            <div className={`chat-input-placeholder block w-full ${projectName ? 'pl-[5.5rem]' : 'pl-12'} ${centered ? 'pr-16 pt-4 pb-2 text-sm' : 'pr-20 sm:pr-40 py-1.5 sm:py-4 text-base'} text-transparent leading-6 whitespace-pre-wrap break-words`}>
               {renderInputWithMentions(input)}
             </div>
           </div>
@@ -365,8 +511,8 @@ export default function ChatComposer({
               onInput={onTextareaInput}
               placeholder={placeholder}
               disabled={isLoading}
-              className={`chat-input-placeholder block w-full ${projectName ? 'pl-[5.5rem]' : 'pl-12'} pr-20 sm:pr-40 py-1.5 sm:py-4 bg-transparent rounded-2xl focus:outline-none text-foreground placeholder-muted-foreground/50 disabled:opacity-50 resize-none min-h-[50px] sm:min-h-[80px] max-h-[40vh] sm:max-h-[300px] overflow-y-auto text-base leading-6 transition-all duration-200`}
-              style={{ height: '50px' }}
+              className={`chat-input-placeholder block w-full ${projectName ? 'pl-[5.5rem]' : 'pl-12'} ${centered ? 'pr-16 pt-4 pb-2 min-h-[56px] max-h-[200px] text-sm' : 'pr-20 sm:pr-40 py-1.5 sm:py-4 min-h-[50px] sm:min-h-[80px] max-h-[40vh] sm:max-h-[300px] text-base'} bg-transparent rounded-3xl focus:outline-none text-foreground placeholder-muted-foreground/50 disabled:opacity-50 resize-none overflow-y-auto leading-6 transition-all duration-200`}
+              style={{ height: centered ? '56px' : '50px' }}
             />
 
             <div className="absolute left-1 top-1/2 transform -translate-y-1/2 flex items-center">
@@ -399,8 +545,8 @@ export default function ChatComposer({
               )}
             </div>
 
-            <div className="absolute right-14 top-1/2 transform -translate-y-1/2">
-              <MicButton onTranscript={onTranscript} className="!w-9 !h-9" />
+            <div className={`absolute ${centered ? 'right-11' : 'right-14'} top-1/2 transform -translate-y-1/2`}>
+              <MicButton onTranscript={onTranscript} className={centered ? '!w-7 !h-7' : '!w-9 !h-9'} />
             </div>
 
             <button
@@ -414,24 +560,419 @@ export default function ChatComposer({
                 event.preventDefault();
                 onSubmit(event);
               }}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 w-10 h-10 sm:w-11 sm:h-11 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed rounded-xl flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-1 focus:ring-offset-background"
+              className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${centered ? 'w-8 h-8 rounded-lg' : 'w-10 h-10 sm:w-11 sm:h-11 rounded-xl'} bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-1 focus:ring-offset-background`}
             >
-              <svg className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-primary-foreground transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={`${centered ? 'w-3.5 h-3.5' : 'w-4 h-4 sm:w-[18px] sm:h-[18px]'} text-primary-foreground transform rotate-90`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </button>
 
-            <div
-              className={`absolute bottom-1 ${projectName ? 'left-[5.5rem]' : 'left-12'} right-14 sm:right-40 text-xs text-muted-foreground/50 pointer-events-none hidden sm:block transition-opacity duration-200 ${
-                input.trim() ? 'opacity-0' : 'opacity-100'
-              }`}
-            >
-              {sendByCtrlEnter ? t('input.hintText.ctrlEnter') : t('input.hintText.enter')}
-            </div>
+            {!centered && (
+              <div
+                className={`absolute bottom-1 ${projectName ? 'left-[5.5rem]' : 'left-12'} right-14 sm:right-40 text-xs text-muted-foreground/50 pointer-events-none hidden sm:block transition-opacity duration-200 ${
+                  input.trim() ? 'opacity-0' : 'opacity-100'
+                }`}
+              >
+                {sendByCtrlEnter ? t('input.hintText.ctrlEnter') : t('input.hintText.enter')}
+              </div>
+            )}
           </div>
+
+          {/* Bottom toolbar inside text box — only when centered (empty state) */}
+          {centered && providerAvailability && (
+            <div className="relative z-10 border-t border-border/30 px-4 py-2.5">
+              {/* Row 1: Agents list + model selector on left, modes on right */}
+              <div className="flex items-center gap-2">
+                {/* Left side: agent selector as a list dropdown + model */}
+                <div className="flex items-center gap-1.5">
+                  <AgentSelector
+                    providers={PROVIDERS}
+                    activeProvider={sessionProvider}
+                    providerAvailability={providerAvailability}
+                    onSelect={selectProvider}
+                    t={t}
+                  />
+
+                  {/* Model selector */}
+                  {modelConfig && (
+                    <>
+                      {(modelConfig as any).ALLOWS_CUSTOM ? (
+                        <OpenRouterModelInput value={currentModel} options={modelConfig.OPTIONS} onChange={handleModelChange} />
+                      ) : (modelConfig as any).IS_LOCAL && modelConfig.OPTIONS.length === 0 ? (
+                        <span className="text-[10px] text-muted-foreground/60 px-2 py-0.5 border border-border/50 rounded-lg">
+                          {isLoadingOllamaModels ? 'Loading...' : 'No models'}
+                        </span>
+                      ) : (
+                        <ModelSelector
+                          value={currentModel}
+                          options={modelConfig.OPTIONS}
+                          onChange={handleModelChange}
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Spacer */}
+                <div className="flex-1" />
+
+                {/* Right side: session modes | permission mode + thinking */}
+                <div className="flex items-center gap-2.5">
+                  {onNewSessionModeChange && sessionModeChoices.map((choice) => {
+                    const active = newSessionMode === choice.id;
+                    const dotColor = choice.id === 'research' ? 'bg-sky-500' : 'bg-emerald-500';
+                    return (
+                      <button
+                        key={choice.id}
+                        type="button"
+                        onClick={() => onNewSessionModeChange(choice.id)}
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all duration-150 ${
+                          active
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1">
+                          <span className={`inline-block h-1.5 w-1.5 rounded-full ${active ? dotColor : 'bg-muted-foreground/40'}`} />
+                          {t(choice.titleKey)}
+                        </span>
+                      </button>
+                    );
+                  })}
+
+                  <div className="h-4 border-l border-border/40" />
+
+                  <ChatInputControls
+                    permissionMode={permissionMode}
+                    onModeSwitch={onModeSwitch}
+                    provider={provider}
+                    codexModel={codexModel}
+                    geminiModel={geminiModel}
+                    thinkingMode={thinkingMode}
+                    setThinkingMode={setThinkingMode}
+                    codexReasoningEffort={codexReasoningEffort}
+                    setCodexReasoningEffort={setCodexReasoningEffort}
+                    geminiThinkingMode={geminiThinkingMode}
+                    setGeminiThinkingMode={setGeminiThinkingMode}
+                    tokenBudget={tokenBudget}
+                    slashCommandsCount={slashCommandsCount}
+                    onToggleCommandMenu={onToggleCommandMenu}
+                    hasInput={hasInput}
+                    onClearInput={onClearInput}
+                    isUserScrolledUp={isUserScrolledUp}
+                    hasMessages={hasMessages}
+                    onScrollToBottom={onScrollToBottom}
+                    hideCommandMenu
+                    compact
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       </form>}
+    </div>
+  );
+}
+
+// Model selector dropdown (styled to match agent selector)
+function ModelSelector({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const displayLabel = options.find((o) => o.value === value)?.label || value;
+
+  useEffect(() => {
+    const handler = (e: globalThis.MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border/50 text-[11px] font-medium text-foreground hover:bg-muted/40 transition-all duration-150"
+      >
+        <span className="truncate max-w-[8rem]">{displayLabel}</span>
+        <svg className="w-3 h-3 text-muted-foreground/60 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute z-50 bottom-full mb-1 left-0 w-52 max-h-[240px] bg-popover border border-border rounded-xl shadow-xl overflow-y-auto">
+          {options.map((opt) => {
+            const active = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { onChange(opt.value); setOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] transition-colors ${
+                  active
+                    ? 'bg-primary/8 text-foreground font-medium'
+                    : 'hover:bg-muted/50 text-muted-foreground'
+                }`}
+              >
+                <span className="flex-1 truncate">{opt.label}</span>
+                {active && <Check className="w-3 h-3 text-primary shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Agent selector dropdown (list of providers)
+function AgentSelector({
+  providers,
+  activeProvider,
+  providerAvailability,
+  onSelect,
+  t,
+}: {
+  providers: ProviderDef[];
+  activeProvider: SessionProvider;
+  providerAvailability: Record<SessionProvider, ProviderAvailability>;
+  onSelect: (id: SessionProvider) => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const activeProviderDef = providers.find((p) => p.id === activeProvider);
+
+  useEffect(() => {
+    const handler = (e: globalThis.MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all duration-150 ${
+          activeProviderDef
+            ? `${activeProviderDef.accent} ${activeProviderDef.ring} ring-1 bg-card/90 text-foreground`
+            : 'border-border/50 bg-card/50 text-muted-foreground'
+        }`}
+      >
+        <SessionProviderLogo provider={activeProvider} className="w-3.5 h-3.5 shrink-0" />
+        <span>{activeProviderDef?.name || activeProvider}</span>
+        <svg className="w-3 h-3 text-muted-foreground/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute z-50 bottom-full mb-1 left-0 w-48 bg-popover border border-border rounded-xl shadow-xl overflow-hidden">
+          {providers.map((p) => {
+            const active = activeProvider === p.id;
+            const unavailable = providerAvailability[p.id]?.cliAvailable === false;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                disabled={unavailable}
+                onClick={() => { onSelect(p.id); setOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] transition-colors ${
+                  unavailable
+                    ? 'opacity-35 cursor-not-allowed grayscale'
+                    : active
+                      ? 'bg-primary/8 text-foreground font-medium'
+                      : 'hover:bg-muted/50 text-muted-foreground'
+                }`}
+              >
+                <SessionProviderLogo provider={p.id} className="w-4 h-4 shrink-0" />
+                <span className="flex-1">{p.name}</span>
+                {active && <Check className="w-3 h-3 text-primary" />}
+                {unavailable && <span className="text-[9px] text-muted-foreground">N/A</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// OpenRouter model input for custom model search
+type ModelOption = { value: string; label: string; contextLength?: number | null; isCustom?: boolean };
+let _modelsCache: ModelOption[] | null = null;
+
+function OpenRouterModelInput({
+  value,
+  options: fallbackOptions,
+  onChange,
+}: {
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [models, setModels] = useState<ModelOption[]>(_modelsCache || fallbackOptions);
+  const [loading, setLoading] = useState(false);
+  const [customDraft, setCustomDraft] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const customModels: ModelOption[] = JSON.parse(localStorage.getItem('openrouter-custom-models') || '[]');
+
+  const fetchModels = useCallback(async () => {
+    if (_modelsCache) { setModels(_modelsCache); return; }
+    setLoading(true);
+    try {
+      const res = await authenticatedFetch('/api/settings/openrouter-models');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.models?.length) {
+          _modelsCache = data.models;
+          setModels(data.models);
+        }
+      }
+    } catch { /* use fallback */ }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      fetchModels();
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [open, fetchModels]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setShowCustomInput(false);
+      }
+    };
+    if (open) document.addEventListener('mousedown', handler as any);
+    return () => document.removeEventListener('mousedown', handler as any);
+  }, [open]);
+
+  const allModels = [...customModels, ...models.filter((m) => !customModels.some((c) => c.value === m.value))];
+  const filtered = search
+    ? allModels.filter((m) => m.value.toLowerCase().includes(search.toLowerCase()) || m.label.toLowerCase().includes(search.toLowerCase()))
+    : allModels;
+  const displayLabel = allModels.find((o) => o.value === value)?.label || value;
+
+  const addCustomModel = () => {
+    const slug = customDraft.trim();
+    if (!slug) return;
+    const existing: ModelOption[] = JSON.parse(localStorage.getItem('openrouter-custom-models') || '[]');
+    if (!existing.some((m) => m.value === slug)) {
+      const updated = [...existing, { value: slug, label: slug, isCustom: true }];
+      localStorage.setItem('openrouter-custom-models', JSON.stringify(updated));
+    }
+    onChange(slug);
+    setCustomDraft('');
+    setShowCustomInput(false);
+    setOpen(false);
+  };
+
+  const removeCustomModel = (slug: string) => {
+    const existing: ModelOption[] = JSON.parse(localStorage.getItem('openrouter-custom-models') || '[]');
+    localStorage.setItem('openrouter-custom-models', JSON.stringify(existing.filter((m) => m.value !== slug)));
+    if (value === slug) onChange(fallbackOptions[0]?.value || 'anthropic/claude-sonnet-4');
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="bg-transparent pl-2 pr-4 py-0.5 text-[10px] font-medium border border-border/50 rounded-lg text-foreground cursor-pointer hover:bg-muted/40 transition-colors text-left max-w-[200px] truncate"
+      >
+        {displayLabel} <span className="text-muted-foreground/50 ml-0.5">&#9662;</span>
+      </button>
+
+      {open && (
+        <div className="absolute z-50 bottom-full mb-1 left-0 w-[380px] max-h-[360px] bg-popover border border-border rounded-xl shadow-xl flex flex-col overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60">
+            <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <input
+              ref={inputRef}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search models..."
+              className="flex-1 bg-transparent text-[11px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
+            />
+            {loading && <span className="text-[10px] text-muted-foreground animate-pulse">Loading...</span>}
+          </div>
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            {filtered.length === 0 && !loading && (
+              <p className="px-3 py-4 text-[11px] text-muted-foreground text-center">No models found</p>
+            )}
+            {filtered.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => { onChange(m.value); setOpen(false); setSearch(''); }}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-muted/50 transition-colors group ${m.value === value ? 'bg-primary/8' : ''}`}
+              >
+                <span className="w-3.5 shrink-0">
+                  {m.value === value && <Check className="w-3 h-3 text-primary" />}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[11px] font-medium text-foreground truncate">{m.label}</span>
+                  {m.label !== m.value && <span className="block text-[9px] text-muted-foreground/60 truncate">{m.value}</span>}
+                </span>
+                {m.contextLength && <span className="text-[9px] text-muted-foreground/50 shrink-0">{Math.round(m.contextLength / 1000)}k</span>}
+                {m.isCustom && (
+                  <button type="button" onClick={(e) => { e.stopPropagation(); removeCustomModel(m.value); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="border-t border-border/60 px-3 py-2">
+            {showCustomInput ? (
+              <div className="flex items-center gap-2">
+                <input
+                  autoFocus
+                  value={customDraft}
+                  onChange={(e) => setCustomDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') addCustomModel(); if (e.key === 'Escape') setShowCustomInput(false); }}
+                  placeholder="e.g. provider/model-name"
+                  className="flex-1 bg-transparent text-[11px] text-foreground border border-border/60 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                />
+                <button type="button" onClick={addCustomModel} className="text-[10px] font-medium text-primary hover:text-primary/80">Add</button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setShowCustomInput(true)} className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                <Plus className="w-3 h-3" />
+                Add custom model
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

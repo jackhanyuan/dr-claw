@@ -14,6 +14,7 @@ type GeminiThinkingSelectorProps = {
   onModeChange: (modeId: GeminiThinkingModeId) => void;
   onClose?: () => void;
   className?: string;
+  compact?: boolean;
 };
 
 const MODE_ICONS = {
@@ -73,6 +74,7 @@ export default function GeminiThinkingSelector({
   onModeChange,
   onClose,
   className = '',
+  compact,
 }: GeminiThinkingSelectorProps) {
   const { t } = useTranslation('chat');
   const [isOpen, setIsOpen] = useState(false);
@@ -116,14 +118,14 @@ export default function GeminiThinkingSelector({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-10 h-10 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+        className={`${compact ? 'w-7 h-7' : 'w-10 h-10 sm:w-10 sm:h-10'} rounded-full flex items-center justify-center transition-all duration-200 ${
           selectedMode === 'default'
             ? 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
             : 'bg-sky-100 hover:bg-sky-200 dark:bg-sky-900 dark:hover:bg-sky-800'
         }`}
         title={t('geminiThinking.buttonTitle', { mode: currentMode.name })}
       >
-        <IconComponent className={`w-5 h-5 ${currentMode.color}`} />
+        <IconComponent className={`${compact ? 'w-3.5 h-3.5' : 'w-5 h-5'} ${currentMode.color}`} />
       </button>
 
       {isOpen && (

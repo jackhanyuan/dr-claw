@@ -116,7 +116,7 @@
     "technicalDetails": "Technical details"
   },
   "input": {
-    "placeholder": "Type / for commands, @ for files, or ask {{provider}} anything...",
+    "placeholder": "Describe your research goal, ask a question, or start a workflow...",
     "placeholderDefault": "Type your message...",
     "disabled": "Input disabled",
     "attachFiles": "Attach files",

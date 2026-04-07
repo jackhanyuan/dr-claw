@@ -8,6 +8,7 @@ import ChatMessagesPane from './subcomponents/ChatMessagesPane';
 import ChatComposer from './subcomponents/ChatComposer';
 import SkillShortcutsPanel from './subcomponents/SkillShortcutsPanel';
 import ChatContextSidebar from './subcomponents/ChatContextSidebar';
+import GuidedPromptStarter from './subcomponents/GuidedPromptStarter';
 import { RESUMING_STATUS_TEXT } from '../types/types';
 import type { ChatInterfaceProps } from '../types/types';
 import type { ProviderAvailability } from '../types/types';
@@ -670,6 +671,8 @@ function ChatInterface({
     onOpenShellForSession?.();
   }, [onOpenShellForSession]);
 
+  const isEmpty = chatMessages.length === 0 && !isLoadingSessionMessages && !selectedSession && !currentSessionId;
+
   if (!selectedProject) {
     const selectedProviderLabel = getProviderDisplayName(provider);
 
@@ -710,7 +713,7 @@ function ChatInterface({
               />
             </div>
           )}
-          <div className={previewFile ? 'hidden' : 'flex min-h-0 flex-1 flex-col'}>
+          <div className={previewFile ? 'hidden' : `flex min-h-0 flex-1 flex-col ${isEmpty ? 'justify-start pt-[18vh] overflow-y-auto' : ''}`}>
         {shouldShowImportedProjectAnalysisPrompt && (
           <div className="mx-auto mt-4 w-full max-w-3xl px-3 sm:px-4">
             <div className="rounded-xl border border-border bg-card/95 shadow-sm px-4 py-4 sm:px-5">
@@ -787,22 +790,6 @@ function ChatInterface({
           intakeGreeting={intakeGreeting}
           currentSessionId={currentSessionId}
           provider={provider}
-          setProvider={(nextProvider) => setProvider(nextProvider as Provider)}
-          textareaRef={textareaRef}
-          setInput={setInput}
-          setAttachedPrompt={setAttachedPrompt}
-          claudeModel={claudeModel}
-          setClaudeModel={setClaudeModel}
-          cursorModel={cursorModel}
-          setCursorModel={setCursorModel}
-          codexModel={codexModel}
-          setCodexModel={setCodexModel}
-          geminiModel={geminiModel}
-          setGeminiModel={setGeminiModel}
-          openrouterModel={openrouterModel}
-          setOpenrouterModel={setOpenrouterModel}
-          localModel={localModel}
-          setLocalModel={setLocalModel}
           isLoadingMoreMessages={isLoadingMoreMessages}
           hasMoreMessages={hasMoreMessages}
           totalMessages={totalMessages}
@@ -826,25 +813,25 @@ function ChatInterface({
           selectedProject={selectedProject}
           isLoading={isLoading}
           statusText={statusTextOverride || claudeStatus?.text}
-          providerAvailability={providerAvailability}
           newSessionMode={newSessionMode}
-          onNewSessionModeChange={onNewSessionModeChange}
           onRetry={handleRetry}
         />
 
-        <div className="px-2 sm:px-4 max-w-5xl mx-auto w-full">
-          <div className="flex gap-4">
-            <div className="flex-1 min-w-0">
-              <SkillShortcutsPanel setInput={setInput} textareaRef={textareaRef} setAttachedPrompt={setAttachedPrompt} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <ChatTaskProgressPill
-                onStartTask={handleStartTaskInChat}
-                onShowAllTasks={() => setSidebarTab('research')}
-              />
+        {!isEmpty && (
+          <div className="px-2 sm:px-4 max-w-5xl mx-auto w-full">
+            <div className="flex gap-4">
+              <div className="flex-1 min-w-0">
+                <SkillShortcutsPanel setInput={setInput} textareaRef={textareaRef} setAttachedPrompt={setAttachedPrompt} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <ChatTaskProgressPill
+                  onStartTask={handleStartTaskInChat}
+                  onShowAllTasks={() => setSidebarTab('research')}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <ChatComposer
           pendingPermissionRequests={pendingPermissionRequests}
@@ -903,9 +890,11 @@ function ChatInterface({
           onTextareaInput={handleTextareaInput}
           onInputFocusChange={handleInputFocusChange}
           isInputFocused={isInputFocused}
-          placeholder={t('input.placeholder', {
-            provider: getProviderDisplayName(provider),
-          })}
+          placeholder={
+            isEmpty && newSessionMode === 'workspace_qa'
+              ? t('session.mode.workspaceQaPlaceholder', { defaultValue: 'Ask about any file, module, or implementation detail...' })
+              : t('input.placeholder', { provider: getProviderDisplayName(provider) })
+          }
           isTextareaExpanded={isTextareaExpanded}
           sendByCtrlEnter={sendByCtrlEnter}
           onTranscript={handleTranscript}
@@ -918,7 +907,31 @@ function ChatInterface({
           onUpdateAttachedPrompt={(text) =>
             setAttachedPrompt((prev) => prev ? { ...prev, promptText: text } : null)
           }
+          centered={isEmpty}
+          setProvider={(next) => setProvider(next as Provider)}
+          claudeModel={claudeModel}
+          setClaudeModel={setClaudeModel}
+          cursorModel={cursorModel}
+          setCursorModel={setCursorModel}
+          setCodexModel={setCodexModel}
+          setGeminiModel={setGeminiModel}
+          openrouterModel={openrouterModel}
+          setOpenrouterModel={setOpenrouterModel}
+          localModel={localModel}
+          setLocalModel={setLocalModel}
+          providerAvailability={providerAvailability}
+          newSessionMode={newSessionMode}
+          onNewSessionModeChange={onNewSessionModeChange}
         />
+
+        {isEmpty && newSessionMode === 'research' && (
+          <GuidedPromptStarter
+            projectName={selectedProject?.name || ''}
+            setInput={setInput}
+            textareaRef={textareaRef}
+            setAttachedPrompt={setAttachedPrompt}
+          />
+        )}
 
           </div>
         </div>
