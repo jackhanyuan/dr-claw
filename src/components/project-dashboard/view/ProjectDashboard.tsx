@@ -278,9 +278,9 @@ function MetricPill({
   value: string | number;
 }) {
   return (
-    <div className="rounded-xl border border-border/50 bg-background/70 px-2.5 py-2 shadow-sm">
-      <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
-      <div className="mt-1 text-lg font-semibold text-foreground">{value}</div>
+    <div className="rounded-lg border border-border/50 bg-background/70 px-2 py-1.5 shadow-sm">
+      <div className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
+      <div className="mt-0.5 text-base font-semibold text-foreground">{value}</div>
     </div>
   );
 }
@@ -722,25 +722,25 @@ export default function ProjectDashboard({
                     />
                   </div>
 
-                  <div className="rounded-xl border border-border/50 bg-background/70 px-3 py-2.5 shadow-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-                        <Activity className="h-3.5 w-3.5 text-primary" />
+                  <div className="rounded-lg border border-border/50 bg-background/70 px-2.5 py-2 shadow-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                        <Activity className="h-3 w-3 text-primary" />
                         {t('projectDashboard.progressTitle')}
                       </div>
-                      <div className="text-[11px] text-muted-foreground">
+                      <div className="text-[10px] text-muted-foreground">
                         {progress === null
                           ? t('projectDashboard.notTracked')
                           : t('projectDashboard.progressValue', { progress })}
                       </div>
                     </div>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted/80">
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/80">
                       <div
                         className={`h-full rounded-full bg-gradient-to-r ${tone.progress} transition-[width] duration-300`}
                         style={{ width: `${progress ?? 6}%` }}
                       />
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
                       <span>
                         {lastActivity
                           ? t('projectDashboard.lastActivity', {
@@ -758,11 +758,11 @@ export default function ProjectDashboard({
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-border/50 bg-background/70 px-3 py-2.5 shadow-sm">
-                    <div className="flex items-center justify-between gap-3">
+                  <div className="rounded-lg border border-border/50 bg-background/70 px-2.5 py-2 shadow-sm">
+                    <div className="flex items-center justify-between gap-2">
                       <div>
-                        <div className="text-xs font-medium text-foreground">Auto Research</div>
-                        <div className="mt-0.5 text-[11px] text-muted-foreground">
+                        <div className="text-[11px] font-medium text-foreground">Auto Research</div>
+                        <div className="mt-0.5 text-[10px] text-muted-foreground">
                           {activeRun
                             ? `Running ${activeRun.completedTasks ?? 0}/${activeRun.totalTasks ?? 0}${activeRun.currentTaskId ? `, task ${activeRun.currentTaskId}` : ''}`
                             : autoResearch?.eligibility?.eligible
@@ -771,27 +771,27 @@ export default function ProjectDashboard({
                         </div>
                       </div>
                       {activeRun ? (
-                        <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200">
+                        <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200">
                           {activeRun.status}
                         </span>
                       ) : latestRun ? (
-                        <span className="inline-flex items-center rounded-full border border-border/60 bg-background/75 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                        <span className="inline-flex items-center rounded-full border border-border/60 bg-background/75 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                           Last: {latestRun.status}
                         </span>
                       ) : null}
                     </div>
                     {latestRun?.error ? (
-                      <div className="mt-2 text-xs text-red-600 dark:text-red-400">
+                      <div className="mt-1.5 text-[10px] text-red-600 dark:text-red-400">
                         {latestRun.error}
                       </div>
                     ) : null}
                     {autoResearch?.pipeline?.nextTask?.title && !activeRun ? (
-                      <div className="mt-2 text-xs text-muted-foreground">
+                      <div className="mt-1.5 text-[10px] text-muted-foreground">
                         Next: {autoResearch.pipeline.nextTask.title}
                       </div>
                     ) : null}
                     {!activeRun ? (
-                      <div className="mt-2 text-xs text-muted-foreground">
+                      <div className="mt-1.5 text-[10px] text-muted-foreground">
                         {getAutoResearchHint(autoResearch)}
                       </div>
                     ) : null}
