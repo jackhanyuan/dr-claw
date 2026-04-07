@@ -34,6 +34,7 @@ import SkillDropdown from './SkillDropdown';
 import ModelSelector from './ModelSelector';
 import AgentSelector, { type ProviderDef } from './AgentSelector';
 import OpenRouterModelInput from './OpenRouterModelInput';
+import SessionModeSelector from './SessionModeSelector';
 
 interface MentionableFile {
   name: string;
@@ -540,27 +541,14 @@ export default function ChatComposer({
                   </button>
 
                   {/* Session modes — only in empty state */}
-                  {centered && onNewSessionModeChange && sessionModeChoices.map((choice) => {
-                    const active = newSessionMode === choice.id;
-                    const dotColor = choice.id === 'research' ? 'bg-sky-500' : 'bg-emerald-500';
-                    return (
-                      <button
-                        key={choice.id}
-                        type="button"
-                        onClick={() => onNewSessionModeChange(choice.id)}
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all duration-150 ${
-                          active
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
-                        }`}
-                      >
-                        <span className="flex items-center gap-1">
-                          <span className={`inline-block h-1.5 w-1.5 rounded-full ${active ? dotColor : 'bg-muted-foreground/40'}`} />
-                          {t(choice.titleKey)}
-                        </span>
-                      </button>
-                    );
-                  })}
+                  {centered && onNewSessionModeChange && newSessionMode && (
+                    <SessionModeSelector
+                      choices={sessionModeChoices}
+                      activeMode={newSessionMode}
+                      onSelect={onNewSessionModeChange}
+                      t={t}
+                    />
+                  )}
                 </div>
 
                 {/* Spacer */}
