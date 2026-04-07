@@ -289,9 +289,9 @@ function MetricPill({
   value: string | number;
 }) {
   return (
-    <div className="rounded-lg border border-border/50 bg-background/70 px-2 py-1.5 shadow-sm">
-      <div className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
-      <div className="mt-0.5 text-base font-semibold text-foreground">{value}</div>
+    <div className="rounded border border-border/50 bg-background/70 px-1.5 py-1">
+      <div className="text-[8px] uppercase tracking-[0.14em] text-muted-foreground leading-tight">{label}</div>
+      <div className="text-sm font-semibold text-foreground">{value}</div>
     </div>
   );
 }
