@@ -290,9 +290,9 @@ function MetricPill({
   value: string | number;
 }) {
   return (
-    <div className="flex items-baseline gap-1.5 px-1 py-0.5">
-      <div className="text-[8px] uppercase tracking-[0.12em] text-muted-foreground whitespace-nowrap">{label}</div>
-      <div className="text-xs font-semibold text-foreground">{value}</div>
+    <div className="flex items-baseline gap-1">
+      <div className="text-[7px] uppercase tracking-[0.1em] text-muted-foreground whitespace-nowrap">{label}</div>
+      <div className="text-[11px] font-semibold text-foreground">{value}</div>
     </div>
   );
 }
@@ -722,7 +722,7 @@ export default function ProjectDashboard({
                     </Button>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-lg border border-border/40 bg-background/50 px-2 py-1">
+                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0 rounded border border-border/30 bg-background/40 px-1.5 py-0.5 text-[10px]">
                     <MetricPill label={t('projectDashboard.metrics.sessions')} value={sessions.length} />
                     <MetricPill label={t('projectDashboard.metrics.tasks')} value={metadata?.taskCount ?? '0'} />
                     <MetricPill label={t('projectDashboard.metrics.completed')} value={metadata?.completed ?? '0'} />
