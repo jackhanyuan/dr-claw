@@ -211,6 +211,11 @@ export default function AutoResearchHub() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <h2 className="text-lg font-bold text-foreground">{pack.name}</h2>
+                        {pack.repoUrl && (
+                          <a href={pack.repoUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-foreground transition-colors" title="GitHub">
+                            ↗ GitHub
+                          </a>
+                        )}
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${accent.badge}`}>
                           {pack.workflows.length} {locale === 'zh' ? '个工作流' : 'workflows'}
                         </span>

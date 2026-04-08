@@ -29,11 +29,13 @@ export type PackDef = {
   mcp: PackConfigOption[];
   gpu: PackGpuOption[];
   setupScript: string;
+  repoUrl?: string;
 };
 
 export const AUTO_RESEARCH_PACKS: PackDef[] = [
   {
     name: 'ARIS',
+    repoUrl: 'https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep',
     description: {
       zh: '跨模型对抗审稿的端到端自动研究流水线。Claude 执行，GPT/Gemini 审稿，避免自我审查盲区。',
       en: 'End-to-end autonomous research pipeline with cross-model adversarial review. Claude executes, GPT/Gemini reviews.',
@@ -63,6 +65,7 @@ export const AUTO_RESEARCH_PACKS: PackDef[] = [
   },
   {
     name: 'Autoresearch',
+    repoUrl: 'https://github.com/uditgoenka/autoresearch',
     description: {
       zh: '基于 Karpathy 原则的自治迭代引擎。9 个子命令。零依赖。',
       en: 'Autonomous goal-directed iteration engine. 9 subcommands. Zero dependencies.',
@@ -83,6 +86,7 @@ export const AUTO_RESEARCH_PACKS: PackDef[] = [
   },
   {
     name: 'DeepScientist',
+    repoUrl: 'https://github.com/ResearAI/DeepScientist',
     description: {
       zh: 'ICLR 2026 发布的自主研究操作系统。13 个阶段技能覆盖完整研究生命周期，含 50+ 参考模板。每个研究项目是一个 Git 仓库。',
       en: 'Autonomous research OS from ICLR 2026. 13 stage skills covering the full research lifecycle with 50+ reference templates. Each project is a Git repo.',
