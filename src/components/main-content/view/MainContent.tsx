@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import ChatInterface from '../../chat/view/ChatInterface';
 import GitPanel from '../../GitPanel';
 import SkillsDashboard from '../../SkillsDashboard';
-import ComputePanel from '../../ComputePanel';
+import ComputeResourcesDashboard from '../../compute-dashboard/ComputeResourcesDashboard';
 import ErrorBoundary from '../../ErrorBoundary';
 import SurveyPage from '../../survey/view/SurveyPage';
 import ProjectDashboard from '../../project-dashboard/view/ProjectDashboard';
@@ -199,6 +199,26 @@ function MainContent({
     );
   }
 
+  if (activeTab === 'compute') {
+    return (
+      <div className="h-full flex flex-col">
+        <MainContentHeader
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          selectedProject={null}
+          selectedSession={null}
+          shouldShowTasksTab={shouldShowTasksTab}
+          isMobile={isMobile}
+          onMenuClick={onMenuClick}
+        />
+
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ComputeResourcesDashboard />
+        </div>
+      </div>
+    );
+  }
+
   if (!selectedProject) {
     return <MainContentStateView mode="empty" isMobile={isMobile} onMenuClick={onMenuClick} />;
   }
@@ -271,12 +291,6 @@ function MainContent({
                 selectedProject={selectedProject}
                 onChatFromReference={onChatFromReference ? (ref: Reference) => onChatFromReference(selectedProject, ref) : undefined}
               />
-            </div>
-          )}
-
-          {activeTab === 'compute' && (
-            <div className="h-full overflow-hidden">
-              <ComputePanel selectedProject={selectedProject} />
             </div>
           )}
 
