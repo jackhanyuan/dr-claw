@@ -323,6 +323,7 @@ export default function ChatContextSidebar({
   const [previewFile, setPreviewFile] = useState<SessionContextFileItem | SessionContextOutputItem | null>(null);
   const [previewTask, setPreviewTask] = useState<SessionContextTaskItem | null>(null);
   const asideRef = useRef<HTMLElement | null>(null);
+  const isSidebarCollapsed = !isMobile && isCollapsed;
 
   const toggleListExpansion = useCallback((key: string) => {
     setExpandedLists((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -469,6 +470,9 @@ export default function ChatContextSidebar({
     return t('sessionContext.kinds.task');
   }, [t]);
   const toggleCollapsed = useCallback(() => {
+    if (isMobile) {
+      return;
+    }
     setIsCollapsed((current) => {
       const nextValue = !current;
       if (typeof window !== 'undefined') {
@@ -476,11 +480,14 @@ export default function ChatContextSidebar({
       }
       return nextValue;
     });
-  }, []);
+  }, [isMobile]);
   const handleResizeStart = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    if (isMobile) {
+      return;
+    }
     event.preventDefault();
     setIsResizing(true);
-  }, []);
+  }, [isMobile]);
 
   const persistReviews = useCallback(async (nextReviews: SessionReviewState) => {
     setReviews(nextReviews);
@@ -543,6 +550,12 @@ export default function ChatContextSidebar({
   }, []);
 
   useEffect(() => {
+    if (isMobile && isResizing) {
+      setIsResizing(false);
+    }
+  }, [isMobile, isResizing]);
+
+  useEffect(() => {
     if (!isResizing) {
       return undefined;
     }
@@ -603,7 +616,7 @@ export default function ChatContextSidebar({
 
   return (
     <>
-      {!isCollapsed && (
+      {!isSidebarCollapsed && (
         <div
           onMouseDown={handleResizeStart}
           className={isMobile ? 'hidden' : 'block w-1 flex-shrink-0 cursor-col-resize bg-border/40 transition-colors hover:bg-primary/25'}
@@ -616,13 +629,13 @@ export default function ChatContextSidebar({
         className={`flex min-h-0 flex-col bg-gradient-to-b from-card via-card to-muted/20 backdrop-blur ${
           isMobile
             ? 'w-full border-t border-border/60'
-            : `flex-shrink-0 border-l border-border/60 ${isCollapsed ? 'w-[56px]' : ''}`
+            : `flex-shrink-0 border-l border-border/60 ${isSidebarCollapsed ? 'w-[56px]' : ''}`
         }`}
-        style={!isCollapsed ? { width: `${sidebarWidth}px` } : undefined}
+        style={!isMobile && !isSidebarCollapsed ? { width: `${sidebarWidth}px` } : undefined}
       >
       <div className="border-b border-border/60 px-4 py-3.5">
         <div className="flex items-center justify-between gap-3">
-          {!isCollapsed && (
+          {!isSidebarCollapsed && (
             <div className="inline-flex items-center bg-muted/60 rounded-lg p-[3px] gap-[2px]">
               {([
                 { id: 'context' as SidebarTab, icon: FolderSearch, labelKey: 'sessionContext.sidebarTabs.context' },
@@ -651,18 +664,20 @@ export default function ChatContextSidebar({
           )}
           <div className="flex items-center gap-2">
             {isLoadingTrace && activeSidebarTab === 'context' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-            <button
-              type="button"
-              onClick={toggleCollapsed}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-border/70 bg-background/85 text-muted-foreground shadow-sm transition-colors hover:text-foreground"
-              title={isCollapsed ? t('sessionContext.actions.expand') : t('sessionContext.actions.collapse')}
-            >
-              {isCollapsed ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
-            </button>
+            {!isMobile && (
+              <button
+                type="button"
+                onClick={toggleCollapsed}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-border/70 bg-background/85 text-muted-foreground shadow-sm transition-colors hover:text-foreground"
+                title={isSidebarCollapsed ? t('sessionContext.actions.expand') : t('sessionContext.actions.collapse')}
+              >
+                {isSidebarCollapsed ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
+              </button>
+            )}
           </div>
         </div>
 
-        {!isCollapsed && activeSidebarTab === 'context' && (
+        {!isSidebarCollapsed && activeSidebarTab === 'context' && (
           <>
 
         <div className="mt-3 grid grid-cols-4 gap-2">
@@ -687,8 +702,8 @@ export default function ChatContextSidebar({
         )}
       </div>
 
-      {isCollapsed ? (
-        <div className={`flex flex-1 flex-col items-center gap-2 p-3 ${isMobile ? '' : 'pt-4'}`}>
+      {isSidebarCollapsed ? (
+        <div className="flex flex-1 flex-col items-center gap-2 p-3 pt-4">
           {([
             { id: 'context' as SidebarTab, icon: FolderSearch, labelKey: 'sessionContext.sidebarTabs.context' },
             { id: 'research' as SidebarTab, icon: FlaskConical, labelKey: 'sessionContext.sidebarTabs.research' },
