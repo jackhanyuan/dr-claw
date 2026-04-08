@@ -1,9 +1,16 @@
 import express from 'express';
-import { memoryDb, appSettingsDb } from '../database/db.js';
+import { memoryDb } from '../database/db.js';
 import { syncMemoryFiles } from '../utils/memoryPrompt.js';
 
 const router = express.Router();
-const MEMORY_ENABLED_KEY = 'memory_enabled';
+const MAX_CONTENT_LENGTH = 500;
+const VALID_CATEGORIES = new Set(['general', 'preference', 'context', 'workflow']);
+
+/** Parse and validate :id param as a positive integer. */
+function parseId(raw) {
+  const id = parseInt(raw, 10);
+  return Number.isNaN(id) || id <= 0 ? null : id;
+}
 
 // ===============================
 // Memory CRUD
@@ -27,10 +34,17 @@ router.post('/', async (req, res) => {
     if (!content || !content.trim()) {
       return res.status(400).json({ error: 'Memory content is required' });
     }
-    const memory = memoryDb.create(req.user.id, content.trim(), category || 'general');
+    if (content.length > MAX_CONTENT_LENGTH) {
+      return res.status(400).json({ error: `Memory content must be ${MAX_CONTENT_LENGTH} characters or less` });
+    }
+    const cat = VALID_CATEGORIES.has(category) ? category : 'general';
+    const memory = memoryDb.create(req.user.id, content.trim(), cat);
     syncMemoryFiles(req.user.id).catch(err => console.warn('[memory] sync error:', err.message));
     res.status(201).json({ memory });
   } catch (error) {
+    if (error.message?.includes('Maximum of')) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error('Error creating memory:', error);
     res.status(500).json({ error: 'Failed to create memory' });
   }
@@ -39,11 +53,18 @@ router.post('/', async (req, res) => {
 // Update a memory
 router.put('/:id', async (req, res) => {
   try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid memory ID' });
+
     const { content, category } = req.body;
-    const memory = memoryDb.update(req.user.id, req.params.id, {
-      content: content?.trim(),
-      category,
-    });
+    if (content !== undefined && content.length > MAX_CONTENT_LENGTH) {
+      return res.status(400).json({ error: `Memory content must be ${MAX_CONTENT_LENGTH} characters or less` });
+    }
+    const updates = {};
+    if (content !== undefined) updates.content = content.trim();
+    if (category !== undefined) updates.category = VALID_CATEGORIES.has(category) ? category : 'general';
+
+    const memory = memoryDb.update(req.user.id, id, updates);
     if (!memory) {
       return res.status(404).json({ error: 'Memory not found' });
     }
@@ -58,7 +79,10 @@ router.put('/:id', async (req, res) => {
 // Toggle memory enabled/disabled
 router.patch('/:id/toggle', async (req, res) => {
   try {
-    const memory = memoryDb.toggle(req.user.id, req.params.id);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid memory ID' });
+
+    const memory = memoryDb.toggle(req.user.id, id);
     if (!memory) {
       return res.status(404).json({ error: 'Memory not found' });
     }
@@ -73,7 +97,10 @@ router.patch('/:id/toggle', async (req, res) => {
 // Delete a memory
 router.delete('/:id', async (req, res) => {
   try {
-    const deleted = memoryDb.delete(req.user.id, req.params.id);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid memory ID' });
+
+    const deleted = memoryDb.delete(req.user.id, id);
     if (!deleted) {
       return res.status(404).json({ error: 'Memory not found' });
     }
@@ -86,25 +113,25 @@ router.delete('/:id', async (req, res) => {
 });
 
 // ===============================
-// Global Memory Settings
+// Per-User Memory Settings
 // ===============================
 
-// Get global memory enabled state
+// Get memory enabled state for the authenticated user
 router.get('/settings', async (req, res) => {
   try {
-    const value = appSettingsDb.get(MEMORY_ENABLED_KEY);
-    res.json({ enabled: value !== 'false' }); // default to true
+    const enabled = memoryDb.getMemoryEnabled(req.user.id);
+    res.json({ enabled });
   } catch (error) {
     console.error('Error fetching memory settings:', error);
     res.status(500).json({ error: 'Failed to fetch memory settings' });
   }
 });
 
-// Set global memory enabled state
+// Set memory enabled state for the authenticated user
 router.patch('/settings', async (req, res) => {
   try {
     const { enabled } = req.body;
-    appSettingsDb.set(MEMORY_ENABLED_KEY, enabled ? 'true' : 'false');
+    memoryDb.setMemoryEnabled(req.user.id, !!enabled);
     syncMemoryFiles(req.user.id).catch(err => console.warn('[memory] sync error:', err.message));
     res.json({ enabled: !!enabled });
   } catch (error) {

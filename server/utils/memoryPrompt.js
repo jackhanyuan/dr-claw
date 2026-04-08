@@ -1,28 +1,34 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
-import { memoryDb, appSettingsDb } from '../database/db.js';
+import { memoryDb } from '../database/db.js';
 
-const MEMORY_ENABLED_KEY = 'memory_enabled';
 const MEMORY_SECTION_START = '<!-- DR-CLAW-MEMORY-START -->';
 const MEMORY_SECTION_END = '<!-- DR-CLAW-MEMORY-END -->';
 
 /**
- * Builds a memory block string to inject into system prompts.
- * Returns empty string if memory is globally disabled or no enabled memories exist.
+ * Sanitizes memory content before injecting into system prompts.
+ * Strips markdown headings that could confuse prompt structure.
+ */
+function sanitizeContent(content) {
+  return content.replace(/^#+\s/gm, '').trim();
+}
+
+/**
+ * Builds a memory block string to inject into system prompts (Option A: web UI).
+ * Returns empty string if memory is disabled for this user or no enabled memories exist.
  * @param {number} userId - The authenticated user's ID
  * @returns {string} Formatted memory block or empty string
  */
 export function buildMemoryBlock(userId) {
   if (!userId) return '';
 
-  const globalEnabled = appSettingsDb.get(MEMORY_ENABLED_KEY);
-  if (globalEnabled === 'false') return '';
+  if (!memoryDb.getMemoryEnabled(userId)) return '';
 
   const memories = memoryDb.getEnabled(userId);
   if (!memories || memories.length === 0) return '';
 
-  const lines = memories.map(m => `- ${m.content}`).join('\n');
+  const lines = memories.map(m => `- ${sanitizeContent(m.content)}`).join('\n');
   return `\n\n# User Memories\nThe following are things the user has asked you to remember. Incorporate them naturally into your responses where relevant:\n${lines}\n`;
 }
 
@@ -45,7 +51,7 @@ function formatMemoryMd(memories) {
   } else {
     for (const m of memories) {
       const tag = m.category && m.category !== 'general' ? ` [${m.category}]` : '';
-      lines.push(`- ${m.content}${tag}`);
+      lines.push(`- ${sanitizeContent(m.content)}${tag}`);
     }
   }
 
@@ -54,8 +60,8 @@ function formatMemoryMd(memories) {
 }
 
 /**
- * Syncs enabled memories to ~/.claude/MEMORY.md and manages a delimited
- * section inside ~/.claude/CLAUDE.md so the CLI always loads them.
+ * Syncs enabled memories to user-scoped files under ~/.claude/.
+ * Files are namespaced by userId to avoid multi-user conflicts on shared servers.
  * Call this whenever memories are created, updated, deleted, or toggled.
  * @param {number} userId - The authenticated user's ID
  */
@@ -70,11 +76,11 @@ export async function syncMemoryFiles(userId) {
     // directory likely exists
   }
 
-  const globalEnabled = appSettingsDb.get(MEMORY_ENABLED_KEY);
-  const memories = globalEnabled !== 'false' ? memoryDb.getEnabled(userId) : [];
+  const isEnabled = memoryDb.getMemoryEnabled(userId);
+  const memories = isEnabled ? memoryDb.getEnabled(userId) : [];
 
-  // 1. Write ~/.claude/MEMORY.md
-  const memoryMdPath = path.join(claudeDir, 'MEMORY.md');
+  // 1. Write user-scoped ~/.claude/MEMORY-{userId}.md
+  const memoryMdPath = path.join(claudeDir, `MEMORY-${userId}.md`);
   const memoryMdContent = formatMemoryMd(memories);
   try {
     await fs.writeFile(memoryMdPath, memoryMdContent, 'utf-8');
@@ -83,6 +89,7 @@ export async function syncMemoryFiles(userId) {
   }
 
   // 2. Manage delimited section in ~/.claude/CLAUDE.md
+  // Uses start/end markers to avoid clobbering existing content
   const claudeMdPath = path.join(claudeDir, 'CLAUDE.md');
   const memorySection = buildClaudeMdSection(memories);
 
@@ -122,7 +129,7 @@ function buildClaudeMdSection(memories) {
     lines.push('# User Memories');
     lines.push('The following are things the user has asked you to remember. Incorporate them naturally into your responses where relevant:');
     for (const m of memories) {
-      lines.push(`- ${m.content}`);
+      lines.push(`- ${sanitizeContent(m.content)}`);
     }
   }
 

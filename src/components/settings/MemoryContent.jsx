@@ -95,6 +95,7 @@ function MemoryContent() {
   };
 
   const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this memory?')) return;
     try {
       const res = await authenticatedFetch(`/api/memory/${id}`, { method: 'DELETE' });
       if (res.ok) {
@@ -171,6 +172,7 @@ function MemoryContent() {
         <textarea
           value={newContent}
           onChange={(e) => setNewContent(e.target.value)}
+          maxLength={500}
           placeholder="e.g., I prefer Python for data analysis, My name is Henry, I'm working on NLP research..."
           className="w-full min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y"
         />
@@ -220,6 +222,7 @@ function MemoryContent() {
                     <textarea
                       value={editContent}
                       onChange={(e) => setEditContent(e.target.value)}
+                      maxLength={500}
                       className="w-full min-h-[60px] px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y"
                     />
                     <div className="flex items-center gap-2">

@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
     is_active BOOLEAN DEFAULT 1,
     git_name TEXT,
     git_email TEXT,
-    has_completed_onboarding BOOLEAN DEFAULT 0
+    has_completed_onboarding BOOLEAN DEFAULT 0,
+    memory_enabled BOOLEAN DEFAULT 1
 );
 
 -- Indexes for performance
@@ -206,4 +207,4 @@ CREATE TABLE IF NOT EXISTS user_memories (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_memories_user ON user_memories(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_memories_enabled ON user_memories(is_enabled);
+CREATE INDEX IF NOT EXISTS idx_user_memories_user_enabled ON user_memories(user_id, is_enabled);
