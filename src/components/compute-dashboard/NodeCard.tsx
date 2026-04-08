@@ -254,6 +254,9 @@ export default function NodeCard({
                 <Shell
                   key={`${terminalKey}-${node.id}`}
                   selectedProject={{ path: '/', fullPath: '/' } as any}
+                  selectedSession={null}
+                  initialCommand={null}
+                  onProcessComplete={() => {}}
                   isPlainShell={true}
                   autoConnect={true}
                   wsPath={`/compute-shell?nodeId=${node.id}`}
@@ -266,7 +269,7 @@ export default function NodeCard({
           {/* Slurm panel (only for slurm nodes) */}
           {node.type === 'slurm' && (
             <div className="border-t pt-4">
-              <SlurmPanel node={node} projectPath={selectedProjectPath} />
+              <SlurmPanel node={node} projectPath={node.workDir} />
             </div>
           )}
         </div>
