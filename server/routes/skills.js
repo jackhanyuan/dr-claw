@@ -236,6 +236,16 @@ router.get('/resolve', async (req, res) => {
       return res.status(400).json({ error: 'Invalid skill name' });
     }
     const effectiveWorkingDir = (typeof workingDir === 'string' && workingDir.trim()) || process.cwd();
+    // Validate workingDir: must be absolute and not a forbidden system path
+    if (effectiveWorkingDir !== process.cwd()) {
+      if (!path.isAbsolute(effectiveWorkingDir)) {
+        return res.status(400).json({ error: 'workingDir must be an absolute path' });
+      }
+      const normalized = path.normalize(effectiveWorkingDir);
+      if (FORBIDDEN_PATHS.some((fp) => normalized === fp || normalized.startsWith(fp + path.sep))) {
+        return res.status(400).json({ error: 'Invalid workingDir' });
+      }
+    }
     const skillMdPath = await findSkillMdPath(name, effectiveWorkingDir);
     if (!skillMdPath) {
       return res.status(404).json({ error: 'Skill not found' });

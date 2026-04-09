@@ -581,6 +581,7 @@ export default function ChatContextSidebar({
     try {
       const response = await api.resolveSkill(entry.label, sessionProjectPath);
       if (!response.ok) {
+        console.warn(`[Sidebar] Failed to resolve skill "${entry.label}": ${response.status}`);
         setPreviewTask(entry);
         return;
       }
@@ -595,7 +596,8 @@ export default function ChatContextSidebar({
         count: entry.count,
         lastSeenAt: entry.lastSeenAt,
       });
-    } catch {
+    } catch (err) {
+      console.warn('[Sidebar] Skill resolve error:', err);
       setPreviewTask(entry);
     }
   }, [sessionProjectPath]);

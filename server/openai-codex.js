@@ -448,7 +448,7 @@ export async function queryCodex(command, options = {}, ws) {
     publishSessionId(thread.id || sessionId || null);
 
     // Expand /skill-name slash commands into full SKILL.md instructions
-    const expandedCommand = await expandSkillCommand(command?.trim?.() || command, workingDirectory);
+    const expandedCommand = await expandSkillCommand(command?.trim() || command, workingDirectory);
 
     const preparedInput = await prepareCodexInput(expandedCommand, images, workingDirectory);
     tempImagePaths = preparedInput.tempImagePaths;

@@ -661,7 +661,7 @@ export async function queryOpenRouter(command, options = {}, ws) {
     }
 
     // Expand /skill-name slash commands into full SKILL.md instructions
-    const expandedCommand = await expandSkillCommand(command?.trim?.() || command, workingDirectory);
+    const expandedCommand = await expandSkillCommand(command?.trim() || command, workingDirectory);
 
     messages.push({ role: 'user', content: expandedCommand });
     await appendSession(currentSessionId, { role: 'user', content: expandedCommand }).catch(() => {});

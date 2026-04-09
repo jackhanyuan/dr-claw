@@ -39,6 +39,7 @@ import { useFileMentions } from './useFileMentions';
 import { type SlashCommand, useSlashCommands } from './useSlashCommands';
 import type { Project, ProjectSession, SessionProvider } from '../../../types/app';
 import { escapeRegExp } from '../utils/chatFormatting';
+import { isAutoResearchScenario } from '../utils/autoResearch';
 import type { SessionMode } from '../../../types/app';
 
 type PendingViewSession = {
@@ -842,7 +843,7 @@ export function useChatComposerState({
       }
 
       // Auto-bypass permissions for autoresearch workflows
-      const effectivePermissionMode = attachedPrompt?.scenarioId?.startsWith('autoresearch-')
+      const effectivePermissionMode = isAutoResearchScenario(attachedPrompt?.scenarioId)
         ? 'bypassPermissions'
         : permissionMode;
 

@@ -7,15 +7,9 @@ import os from 'os';
  * Returns { prefix, body } so the prefix can be re-prepended after expansion.
  */
 function splitContextPrefix(text) {
-  let prefix = '';
-  let body = text;
-  const contextPattern = /^\s*\[Context:[^\]]*\]\s*/i;
-  while (contextPattern.test(body)) {
-    const m = body.match(contextPattern);
-    prefix += m[0];
-    body = body.slice(m[0].length);
-  }
-  return { prefix, body };
+  const m = text.match(/^(\s*\[Context:[^\]]*\]\s*)+/i);
+  if (!m) return { prefix: '', body: text };
+  return { prefix: m[0], body: text.slice(m[0].length) };
 }
 
 /**
@@ -86,19 +80,18 @@ function findNestedSkillRefs(text) {
  */
 async function buildSubSkillIndex(content, workingDir, topSkillName) {
   const refs = findNestedSkillRefs(content);
-  const index = [];
+  const candidates = refs
+    .map((ref) => ({ ref, skillName: ref.includes(':') ? ref.split(':')[0] : ref }))
+    .filter(({ skillName }) => skillName !== topSkillName);
 
-  for (const ref of refs) {
-    const skillName = ref.includes(':') ? ref.split(':')[0] : ref;
-    if (skillName === topSkillName) continue;
+  const results = await Promise.all(
+    candidates.map(async ({ ref, skillName }) => {
+      const skillMdPath = await findSkillMdPath(skillName, workingDir);
+      return skillMdPath ? { ref, path: skillMdPath } : null;
+    })
+  );
 
-    const skillMdPath = await findSkillMdPath(skillName, workingDir);
-    if (skillMdPath) {
-      index.push({ ref, path: skillMdPath });
-    }
-  }
-
-  return index;
+  return results.filter(Boolean);
 }
 
 /**
@@ -113,8 +106,6 @@ async function buildSubSkillIndex(content, workingDir, topSkillName) {
  * Returns the expanded prompt string, or the original command unchanged if
  * no matching skill is found.
  */
-export { findSkillMdPath };
-
 export async function expandSkillCommand(command, workingDir) {
   if (!command || typeof command !== 'string') return command;
 
@@ -147,3 +138,5 @@ export async function expandSkillCommand(command, workingDir) {
 
   return `${prefix}# Skill: ${skillCommand}\n\nFollow the procedure below exactly.\n${variantNote}\n${result.content}${userContext}${subSkillNote}`;
 }
+
+export { findSkillMdPath };
