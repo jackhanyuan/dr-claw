@@ -42,7 +42,7 @@ import pty from 'node-pty';
 import fetch from 'node-fetch';
 import mime from 'mime-types';
 
-import { getProjects, getTrashedProjects, getSessions, getSessionMessages, renameProject, renameSession, deleteSession, deleteProject, restoreProject, deleteTrashedProject, addProjectManually, extractProjectDirectory, clearProjectDirectoryCache, encodeProjectPath } from './projects.js';
+import { getProjects, getTrashedProjects, getSessions, getSessionMessages, renameProject, renameSession, deleteSession, deleteProject, restoreProject, deleteTrashedProject, addProjectManually, extractProjectDirectory, clearProjectDirectoryCache, encodeProjectPath, resolveCodexSessionFilePath } from './projects.js';
 import { getProjectTokenUsageSummary } from './project-token-usage.js';
 import { queryClaudeSDK, abortClaudeSDKSession, isClaudeSDKSessionActive, getClaudeSDKSessionStartTime, getActiveClaudeSDKSessions, resolveToolApproval } from './claude-sdk.js';
 import { spawnCursor, abortCursorSession, isCursorSessionActive, getCursorSessionStartTime, getActiveCursorSessions } from './cursor-cli.js';
@@ -3055,28 +3055,7 @@ app.get('/api/projects/:projectName/sessions/:sessionId/token-usage', authentica
 
     // Handle Codex sessions
     if (provider === 'codex') {
-      const codexSessionsDir = path.join(homeDir, '.codex', 'sessions');
-
-      // Find the session file by searching for the session ID
-      const findSessionFile = async (dir) => {
-        try {
-          const entries = await fsPromises.readdir(dir, { withFileTypes: true });
-          for (const entry of entries) {
-            const fullPath = path.join(dir, entry.name);
-            if (entry.isDirectory()) {
-              const found = await findSessionFile(fullPath);
-              if (found) return found;
-            } else if (entry.name.includes(safeSessionId) && entry.name.endsWith('.jsonl')) {
-              return fullPath;
-            }
-          }
-        } catch (error) {
-          // Skip directories we can't read
-        }
-        return null;
-      };
-
-      const sessionFilePath = await findSessionFile(codexSessionsDir);
+      const sessionFilePath = await resolveCodexSessionFilePath(safeSessionId);
 
       if (!sessionFilePath) {
         return res.status(404).json({ error: 'Codex session file not found', sessionId: safeSessionId });

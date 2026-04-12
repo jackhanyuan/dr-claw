@@ -34,7 +34,14 @@ export function useSessionProtection() {
       return;
     }
 
-    setActiveSessions((prev) => new Set([...prev, trackingKey]));
+    setActiveSessions((prev) => {
+      if (prev.has(trackingKey)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.add(trackingKey);
+      return next;
+    });
   }, [resolveTrackingKey]);
 
   const markSessionAsInactive = useCallback((
@@ -48,9 +55,17 @@ export function useSessionProtection() {
     }
 
     setActiveSessions((prev) => {
+      const shouldDeleteTrackingKey = prev.has(trackingKey);
+      const shouldDeleteRawSessionId = Boolean(sessionId && prev.has(sessionId));
+      if (!shouldDeleteTrackingKey && !shouldDeleteRawSessionId) {
+        return prev;
+      }
+
       const next = new Set(prev);
-      next.delete(trackingKey);
-      if (sessionId) {
+      if (shouldDeleteTrackingKey) {
+        next.delete(trackingKey);
+      }
+      if (sessionId && shouldDeleteRawSessionId) {
         next.delete(sessionId);
       }
       return next;
@@ -67,7 +82,14 @@ export function useSessionProtection() {
       return;
     }
 
-    setProcessingSessions((prev) => new Set([...prev, trackingKey]));
+    setProcessingSessions((prev) => {
+      if (prev.has(trackingKey)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.add(trackingKey);
+      return next;
+    });
   }, [resolveTrackingKey]);
 
   const markSessionAsNotProcessing = useCallback((
@@ -81,9 +103,17 @@ export function useSessionProtection() {
     }
 
     setProcessingSessions((prev) => {
+      const shouldDeleteTrackingKey = prev.has(trackingKey);
+      const shouldDeleteRawSessionId = Boolean(sessionId && prev.has(sessionId));
+      if (!shouldDeleteTrackingKey && !shouldDeleteRawSessionId) {
+        return prev;
+      }
+
       const next = new Set(prev);
-      next.delete(trackingKey);
-      if (sessionId) {
+      if (shouldDeleteTrackingKey) {
+        next.delete(trackingKey);
+      }
+      if (sessionId && shouldDeleteRawSessionId) {
         next.delete(sessionId);
       }
       return next;

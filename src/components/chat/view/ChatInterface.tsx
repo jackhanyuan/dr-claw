@@ -234,6 +234,7 @@ function ChatInterface({
   } = useChatSessionState({
     selectedProject,
     selectedSession,
+    activeProvider: provider,
     ws,
     sendMessage,
     autoScrollToBottom,
@@ -363,6 +364,7 @@ function ChatInterface({
     onSessionStatusResolved: resolveSessionStatusCheck,
     onReplaceTemporarySession,
     onNavigateToSession,
+    sendMessage,
   });
 
   const handleRetry = useCallback(() => {
