@@ -289,7 +289,7 @@ export default function ShellWorkspace({ project, session = null }: ShellWorkspa
             >
               {isSessionTab && session ? (
                 <AnyStandaloneShell
-                  key={`${project?.name || 'unknown-project'}::${session.__provider || 'claude'}::${session.id}`}
+                  key={session.id}
                   project={project}
                   session={session}
                   showHeader={false}

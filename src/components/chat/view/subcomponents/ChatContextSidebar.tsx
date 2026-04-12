@@ -578,81 +578,21 @@ export default function ChatContextSidebar({
       });
       return;
     }
-
-    // Resolve via global skills API when path is not under the current project.
+    // Resolve via API (handles paths outside project root and skills without stored path)
     try {
-      const treeResponse = await api.getGlobalSkills();
-      if (!treeResponse.ok) {
-        console.warn(`[Sidebar] Failed to fetch global skills tree: ${treeResponse.status}`);
+      const response = await api.resolveSkill(entry.label, sessionProjectPath);
+      if (!response.ok) {
+        console.warn(`[Sidebar] Failed to resolve skill "${entry.label}": ${response.status}`);
         setPreviewTask(entry);
         return;
       }
-
-      const treeData = await treeResponse.json();
-      const normalizedLabel = String(entry.label || '').trim().toLowerCase();
-      if (!normalizedLabel) {
-        setPreviewTask(entry);
-        return;
-      }
-
-      const queue: Array<{ node: any; relativePath: string }> = Array.isArray(treeData)
-        ? treeData
-          .filter((node) => node && typeof node === 'object')
-          .map((node) => ({ node, relativePath: String(node.name || '').trim() }))
-        : [];
-      let skillDirPath: string | null = null;
-      while (queue.length > 0) {
-        const { node, relativePath } = queue.shift()!;
-        if (!node || typeof node !== 'object') {
-          continue;
-        }
-
-        if (
-          node.type === 'directory' &&
-          typeof node.name === 'string' &&
-          node.name.trim().toLowerCase() === normalizedLabel
-        ) {
-          skillDirPath = relativePath.replace(/\\/g, '/');
-          break;
-        }
-
-        if (Array.isArray(node.children)) {
-          for (const child of node.children) {
-            if (!child || typeof child !== 'object') {
-              continue;
-            }
-            const childName = String(child.name || '').trim();
-            if (!childName) {
-              continue;
-            }
-            queue.push({
-              node: child,
-              relativePath: relativePath ? `${relativePath}/${childName}` : childName,
-            });
-          }
-        }
-      }
-
-      if (!skillDirPath) {
-        setPreviewTask(entry);
-        return;
-      }
-
-      const relativeSkillPath = `${skillDirPath}/SKILL.md`;
-      const skillFileResponse = await api.readGlobalSkillFile(relativeSkillPath);
-      if (!skillFileResponse.ok) {
-        console.warn(`[Sidebar] Failed to read global skill file "${relativeSkillPath}": ${skillFileResponse.status}`);
-        setPreviewTask(entry);
-        return;
-      }
-
-      const data = await skillFileResponse.json();
-      setPreviewContent(typeof data?.content === 'string' ? data.content : null);
+      const data = await response.json();
+      setPreviewContent(data.content);
       setPreviewFile({
         key: entry.key,
         name: 'SKILL.md',
-        relativePath: relativeSkillPath,
-        absolutePath: null,
+        relativePath: data.path,
+        absolutePath: data.path,
         reasons: ['Skill'],
         count: entry.count,
         lastSeenAt: entry.lastSeenAt,

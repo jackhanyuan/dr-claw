@@ -23,7 +23,6 @@ import { classifyError, classifySDKError } from '../shared/errorClassifier.js';
 import { buildTempAttachmentFilename } from './utils/imageAttachmentFiles.js';
 import { buildCodexRealtimeTokenBudget } from './utils/sessionTokenUsage.js';
 import { expandSkillCommand } from './utils/skillExpander.js';
-import { buildCodexSessionCreatedEvent } from './utils/codexSessionEvents.js';
 
 // Track active sessions
 const activeCodexSessions = new Map();
@@ -438,11 +437,12 @@ export async function queryCodex(command, options = {}, ws) {
         });
       }
 
-      sendMessage(ws, buildCodexSessionCreatedEvent({
+      sendMessage(ws, {
+        type: 'session-created',
         sessionId: currentSessionId,
-        sessionMode: sessionMode || 'research',
-        projectName: workingDirectory ? encodeProjectPath(workingDirectory) : null,
-      }));
+        provider: 'codex',
+        mode: sessionMode || 'research'
+      });
     };
 
     publishSessionId(thread.id || sessionId || null);

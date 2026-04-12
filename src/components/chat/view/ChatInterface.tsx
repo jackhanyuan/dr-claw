@@ -232,7 +232,6 @@ function ChatInterface({
   } = useChatSessionState({
     selectedProject,
     selectedSession,
-    activeProvider: provider,
     ws,
     sendMessage,
     autoScrollToBottom,
@@ -362,7 +361,6 @@ function ChatInterface({
     onSessionStatusResolved: resolveSessionStatusCheck,
     onReplaceTemporarySession,
     onNavigateToSession,
-    sendMessage,
   });
 
   const handleRetry = useCallback(() => {
@@ -974,7 +972,7 @@ function ChatInterface({
           onSidebarTabChange={setSidebarTab}
           isCollapsed={isSidebarCollapsed}
           onCollapsedChange={setIsSidebarCollapsed}
-          onStartWorkspaceQa={onStartWorkspaceQa ?? undefined}
+          onStartWorkspaceQa={onStartWorkspaceQa}
           onStartTask={handleStartTaskInChat}
         />
       </div>

@@ -2,7 +2,6 @@ import { spawn } from 'child_process';
 import crossSpawn from 'cross-spawn';
 import { resolveCursorCliCommand } from './utils/cursorCommand.js';
 import { applyStageTagsToSession, recordIndexedSession } from './utils/sessionIndex.js';
-import { encodeProjectPath } from './projects.js';
 
 // Use cross-spawn on Windows for better command execution
 const spawnFunction = process.platform === 'win32' ? crossSpawn : spawn;
@@ -55,7 +54,6 @@ async function spawnCursor(command, options = {}, ws) {
     
     // Use cwd (actual project directory) instead of projectPath
     const workingDir = cwd || projectPath || process.cwd();
-    const encodedProjectName = workingDir ? encodeProjectPath(workingDir) : undefined;
     const cursorCommand = resolveCursorCliCommand();
 
     // Synchronous (better-sqlite3) — no await needed.
@@ -158,8 +156,6 @@ async function spawnCursor(command, options = {}, ws) {
                     ws.send({
                       type: 'session-created',
                       sessionId: capturedSessionId,
-                      provider: 'cursor',
-                      projectName: encodedProjectName,
                       model: response.model,
                       cwd: response.cwd,
                       mode: sessionMode || 'research',
@@ -275,7 +271,7 @@ async function spawnCursor(command, options = {}, ws) {
       // Clean up process reference
       const finalSessionId = capturedSessionId || sessionId || processKey;
       ws.send({
-        type: 'cursor-complete',
+        type: 'claude-complete',
         sessionId: finalSessionId,
         exitCode: code,
         isNewSession: !sessionId && !!command // Flag to indicate this was a new session
