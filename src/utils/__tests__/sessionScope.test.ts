@@ -42,4 +42,48 @@ describe("sessionScope", () => {
     const fallbackScopeKey = buildSessionScopeKey("project-a", "UNKNOWN_PROVIDER", "same-id");
     expect(fallbackScopeKey).toBe(`project-a::${DEFAULT_PROVIDER}::same-id`);
   });
+
+  it("treats same session id with different providers as different scopes", () => {
+    const codexKey = buildSessionScopeKey("project-a", "codex", "shared-session");
+    const claudeKey = buildSessionScopeKey("project-a", "claude", "shared-session");
+
+    expect(codexKey).not.toBe(claudeKey);
+    expect(
+      scopeKeyMatchesScope(codexKey, "project-a", "codex", "shared-session"),
+    ).toBe(true);
+    expect(
+      scopeKeyMatchesScope(codexKey, "project-a", "claude", "shared-session"),
+    ).toBe(false);
+  });
+
+  it("supports session ids containing the scope separator", () => {
+    const scopeKey = buildSessionScopeKey(
+      "project-a",
+      "codex",
+      "session::with::separator",
+    );
+
+    expect(parseSessionScopeKey(scopeKey)).toEqual({
+      projectName: "project-a",
+      provider: "codex",
+      sessionId: "session::with::separator",
+    });
+    expect(
+      scopeKeyMatchesScope(
+        scopeKey,
+        "project-a",
+        "codex",
+        "session::with::separator",
+      ),
+    ).toBe(true);
+  });
+
+  it("returns false when scope fields are empty or undefined", () => {
+    const scopeKey = buildSessionScopeKey("project-a", "codex", "session-1");
+
+    expect(scopeKeyMatchesScope(scopeKey, "", "codex", "session-1")).toBe(false);
+    expect(scopeKeyMatchesScope(scopeKey, undefined, "codex", "session-1")).toBe(false);
+    expect(scopeKeyMatchesScope(scopeKey, "project-a", "codex", "")).toBe(false);
+    expect(scopeKeyMatchesScope(scopeKey, "project-a", "codex", undefined)).toBe(false);
+  });
 });

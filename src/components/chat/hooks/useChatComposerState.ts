@@ -11,6 +11,7 @@ import type {
 } from "react";
 import { useDropzone } from "react-dropzone";
 import type { FileRejection } from "react-dropzone";
+import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { authenticatedFetch } from "../../../utils/api";
 import { isTelemetryEnabled } from "../../../utils/telemetry";
@@ -86,6 +87,7 @@ import {
   OPTIMISTIC_SESSION_CREATED_EVENT,
   type OptimisticSessionCreatedDetail,
 } from "../../../constants/sessionEvents";
+import type { BtwOverlayState } from "../view/subcomponents/BtwOverlay";
 
 type PendingViewSession = {
   sessionId: string | null;
@@ -186,6 +188,13 @@ const CODEX_QUEUE_DISPATCH_ACK_TIMEOUT_MS = 6000;
 const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_SIZE_BYTES = 50 * 1024 * 1024;
 const CODEX_ATTACHMENT_DIR = ".dr-claw/chat-attachments";
+const CLOSED_BTW_OVERLAY: BtwOverlayState = {
+  open: false,
+  question: "",
+  answer: "",
+  loading: false,
+  error: null,
+};
 
 const IMAGE_EXTENSIONS = new Set([
   ".png",
@@ -430,8 +439,10 @@ export function useChatComposerState({
   setIsUserScrolledUp,
   setPendingPermissionRequests,
   newSessionMode = "research",
+  getChatMessagesForBtw,
 }: UseChatComposerStateArgs) {
   const { t } = useTranslation("chat");
+  const { pathname } = useLocation();
   const initialDraftBucket =
     selectedSession?.id || currentSessionId || pendingViewSessionRef.current?.sessionId || "new";
   const initialDraftStorageKey = buildDraftInputStorageKey(
@@ -1223,8 +1234,7 @@ export function useChatComposerState({
     // If we're on the root path with no routed session and no selected session,
     // treat this as an explicit new-session start and clear stale IDs.
     const isExplicitNewSessionStart =
-      typeof window !== "undefined" &&
-      window.location.pathname === "/" &&
+      pathname === "/" &&
       !routedSessionId &&
       !selectedSession?.id;
     if (isExplicitNewSessionStart) {
@@ -1271,6 +1281,7 @@ export function useChatComposerState({
     };
   }, [
     currentSessionId,
+    pathname,
     pendingViewSessionRef,
     provider,
     selectedProject?.fullPath,
@@ -2195,12 +2206,6 @@ export function useChatComposerState({
       const toolsSettings = getToolsSettings(resolvedProvider);
       const telemetryEnabled = isTelemetryEnabled();
 
-      console.log("[DEBUG] useChatComposerState - provider:", resolvedProvider);
-      console.log(
-        "[DEBUG] useChatComposerState - effectiveSessionId:",
-        effectiveSessionId,
-      );
-
       if (isNewSession) {
         const sessionModeContext =
           newSessionMode === "workspace_qa"
@@ -2210,7 +2215,6 @@ export function useChatComposerState({
       }
 
       if (resolvedProvider === "cursor") {
-        console.log("[DEBUG] Sending cursor-command");
         sendMessage({
           type: "cursor-command",
           command: messageContent,
@@ -2230,7 +2234,6 @@ export function useChatComposerState({
           },
         });
       } else if (resolvedProvider === "gemini") {
-        console.log("[DEBUG] Sending gemini-command");
         sendMessage({
           type: "gemini-command",
           command: messageContent,
@@ -2252,7 +2255,6 @@ export function useChatComposerState({
           },
         });
       } else if (resolvedProvider === "codex") {
-        console.log("[DEBUG] Sending codex-command");
         sendMessage({
           type: "codex-command",
           command: messageContent,
@@ -2278,7 +2280,6 @@ export function useChatComposerState({
           },
         });
       } else if (resolvedProvider === "openrouter") {
-        console.log("[DEBUG] Sending openrouter-command");
         sendMessage({
           type: "openrouter-command",
           command: messageContent,
@@ -2298,7 +2299,6 @@ export function useChatComposerState({
           },
         });
       } else if (resolvedProvider === "local") {
-        console.log("[DEBUG] Sending local-command");
         sendMessage({
           type: "local-command",
           command: messageContent,
@@ -2321,10 +2321,9 @@ export function useChatComposerState({
             stageTagSource: "task_context",
           },
         });
-      } else if (provider === 'nano') {
-        console.log('[DEBUG] Sending nano-command');
+      } else if (resolvedProvider === "nano") {
         sendMessage({
-          type: 'nano-command',
+          type: "nano-command",
           command: messageContent,
           sessionId: effectiveSessionId,
           options: {
@@ -2337,11 +2336,10 @@ export function useChatComposerState({
             telemetryEnabled,
             sessionMode: isNewSession ? newSessionMode : selectedSession?.mode,
             stageTagKeys: pendingStageTagKeys,
-            stageTagSource: 'task_context',
+            stageTagSource: "task_context",
           },
         });
       } else {
-        console.log("[DEBUG] Sending claude-command");
         sendMessage({
           type: "claude-command",
           command: messageContent,
@@ -2963,6 +2961,8 @@ export function useChatComposerState({
     isInputFocused,
     intakeGreeting,
     setIntakeGreeting,
+    btwOverlay,
+    closeBtwOverlay,
     setPendingStageTagKeys,
     submitProgrammaticInput,
     activeQueueSessionId,

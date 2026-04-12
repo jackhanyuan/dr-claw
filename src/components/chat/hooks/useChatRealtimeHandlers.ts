@@ -29,7 +29,7 @@ import type {
   ProjectSession,
   SessionProvider,
 } from "../../../types/app";
-import { normalizeProvider } from "../../../utils/providerPolicy";
+import { isProviderAllowed, normalizeProvider } from "../../../utils/providerPolicy";
 
 type PendingViewSession = {
   sessionId: string | null;
@@ -51,6 +51,8 @@ type LatestChatMessage = {
   actualSessionId?: string;
   [key: string]: any;
 };
+
+const warnedUnknownProviders = new Set<string>();
 
 interface UseChatRealtimeHandlersArgs {
   latestMessage: LatestChatMessage | null;
@@ -496,6 +498,7 @@ export function useChatRealtimeHandlers({
       "gemini-complete",
       "openrouter-complete",
       "localgpu-complete",
+      "cursor-complete",
       "cursor-result",
       "session-aborted",
       "claude-error",
@@ -571,6 +574,21 @@ export function useChatRealtimeHandlers({
         typeof providerValue === "string" && providerValue.length > 0
           ? providerValue
           : fallback || inferredMessageProvider || provider;
+
+      if (typeof candidate === "string") {
+        const normalizedCandidate = candidate.trim().toLowerCase();
+        if (
+          normalizedCandidate &&
+          !isProviderAllowed(normalizedCandidate) &&
+          !warnedUnknownProviders.has(normalizedCandidate)
+        ) {
+          warnedUnknownProviders.add(normalizedCandidate);
+          console.warn(
+            `[chat] Unknown provider "${candidate}" on message type "${String(latestMessage.type || "")}", falling back to default provider`,
+          );
+        }
+      }
+
       return normalizeProvider(candidate as SessionProvider);
     };
     const resolveProjectName = (
@@ -1231,7 +1249,6 @@ export function useChatRealtimeHandlers({
             !currentSessionId ||
             structuredMessageData.session_id !== currentSessionId
           ) {
-            console.log("Claude CLI session duplication or new init detected");
             setIsSystemSessionChange(true);
             onNavigateToSession?.(
               structuredMessageData.session_id,
@@ -1324,7 +1341,6 @@ export function useChatRealtimeHandlers({
             !currentSessionId ||
             structuredMessageData.session_id !== currentSessionId
           ) {
-            console.log("Gemini CLI session init detected");
             setIsSystemSessionChange(true);
             onNavigateToSession?.(
               structuredMessageData.session_id,
@@ -1476,6 +1492,7 @@ export function useChatRealtimeHandlers({
       }
 
       case "claude-complete":
+      case "cursor-complete":
       case "gemini-complete":
       case "openrouter-complete":
       case "localgpu-complete": {

@@ -275,7 +275,7 @@ async function spawnCursor(command, options = {}, ws) {
       // Clean up process reference
       const finalSessionId = capturedSessionId || sessionId || processKey;
       ws.send({
-        type: 'claude-complete',
+        type: 'cursor-complete',
         sessionId: finalSessionId,
         exitCode: code,
         isNewSession: !sessionId && !!command // Flag to indicate this was a new session

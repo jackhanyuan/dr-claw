@@ -14,7 +14,9 @@
   - Added project-scoped event enrichment for session lifecycle payloads to avoid cross-session/cross-project ambiguity.
   - Added lifecycle projection from provider completion/error messages into normalized session-state events.
   - Added session-created `projectName` metadata for Claude/Cursor/Gemini session initialization paths.
+  - Removed unused `projectPath` from `session-accepted` payloads; downstream should rely on `projectName` + scoped identifiers.
 - Nano chain compatibility:
+  - UI provider/model selection no longer surfaces Nano by default in the upstream-safe branch, while server-side `nano-command` handling remains for compatibility.
   - Preserved Nano command path and active session reporting in WebSocket session status flows.
   - Ensured session lifecycle protocol is emitted consistently for Nano just like other providers.
 

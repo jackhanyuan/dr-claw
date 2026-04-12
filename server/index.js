@@ -71,7 +71,7 @@ import computeRoutes from './routes/compute.js';
 import newsRoutes from './routes/news.js';
 import autoResearchRoutes from './routes/auto-research.js';
 import referencesRoutes from './routes/references.js';
-import { initializeDatabase, sessionDb, tagDb } from './database/db.js';
+import { initializeDatabase, projectDb, sessionDb, tagDb } from './database/db.js';
 import { validateApiKey, authenticateToken, authenticateWebSocket } from './middleware/auth.js';
 import { IS_PLATFORM } from './constants/config.js';
 import { enqueueTelemetryEvent } from './telemetry.js';
@@ -1370,6 +1370,36 @@ function inferProviderFromMessageType(type, fallbackProvider = null) {
     return fallbackProvider || null;
 }
 
+const DEBUG_SESSION_LIFECYCLE = process.env.DEBUG_SESSION_LIFECYCLE === '1';
+const warnedUnknownLifecycleProjectPaths = new Set();
+
+function isKnownLifecycleProjectPath(projectPath) {
+    if (typeof projectPath !== 'string' || projectPath.trim().length === 0) {
+        return false;
+    }
+
+    const normalizedPath = path.resolve(projectPath);
+    if (!fs.existsSync(normalizedPath)) {
+        return false;
+    }
+
+    const encodedProjectName = encodeProjectPath(normalizedPath);
+    return Boolean(
+        projectDb.getProjectByPath(normalizedPath) ||
+        projectDb.getProjectById(encodedProjectName),
+    );
+}
+
+function warnUnknownLifecycleProjectPath(projectPath) {
+    const normalizedPath = path.resolve(projectPath);
+    if (warnedUnknownLifecycleProjectPaths.has(normalizedPath)) {
+        return;
+    }
+
+    warnedUnknownLifecycleProjectPaths.add(normalizedPath);
+    console.warn(`[WARN] Ignoring lifecycle projectPath that is not a known project: ${normalizedPath}`);
+}
+
 function resolveProjectName(projectName = null, projectPath = null) {
     if (typeof projectName === 'string' && projectName.trim().length > 0) {
         return projectName;
@@ -1379,9 +1409,18 @@ function resolveProjectName(projectName = null, projectPath = null) {
         return null;
     }
 
+    const normalizedProjectPath = path.resolve(projectPath);
+    if (!isKnownLifecycleProjectPath(normalizedProjectPath)) {
+        warnUnknownLifecycleProjectPath(normalizedProjectPath);
+        return null;
+    }
+
     try {
-        return encodeProjectPath(projectPath);
-    } catch {
+        return encodeProjectPath(normalizedProjectPath);
+    } catch (error) {
+        if (DEBUG_SESSION_LIFECYCLE) {
+            console.debug('[DEBUG] Failed to encode project path for lifecycle payload:', normalizedProjectPath, error?.message || error);
+        }
         return null;
     }
 }
@@ -1651,10 +1690,11 @@ function handleChatConnection(ws, request) {
             provider,
             sessionId,
             requestType,
-            projectPath,
             acceptedAt: Date.now(),
             ...(resolvedProjectName ? { projectName: resolvedProjectName } : {}),
         });
+        // Keep these writes adjacent and synchronous so clients always see
+        // `session-accepted` before the corresponding `running` state transition.
         sendSessionStateChanged({
             provider,
             sessionId,
@@ -1698,7 +1738,6 @@ function handleChatConnection(ws, request) {
     ws.on('message', async (message) => {
         try {
             const data = JSON.parse(message);
-            console.log(`[DEBUG] Received WebSocket message: ${data.type}`);
             
             if (data.type === 'telemetry-settings') {
                 const enabled = data.enabled !== false;
