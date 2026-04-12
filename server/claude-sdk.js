@@ -148,7 +148,7 @@ function mapCliOptionsToSDK(options = {}) {
 
   // Map system prompt configuration with optional user memory + compute guard injection
   const memoryBlock = options.userId ? buildMemoryBlock(options.userId) : '';
-  const appendBlock = (memoryBlock + COMPUTE_GUARD_BLOCK).trim();
+  const appendBlock = [memoryBlock, COMPUTE_GUARD_BLOCK].filter(Boolean).join('\n\n').trim();
   sdkOptions.systemPrompt = {
     type: 'preset',
     preset: 'claude_code',  // Required to use CLAUDE.md

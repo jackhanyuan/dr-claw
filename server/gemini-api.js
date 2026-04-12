@@ -1533,7 +1533,7 @@ export async function queryGeminiApi(command, options = {}, ws) {
       projectName: workingDirectory ? encodeProjectPath(workingDirectory) : undefined,
     });
 
-    const systemText = (customSystemPrompt || await buildSystemPrompt(workingDirectory)) + COMPUTE_GUARD_BLOCK;
+    const systemText = [(customSystemPrompt || await buildSystemPrompt(workingDirectory)), COMPUTE_GUARD_BLOCK].filter(Boolean).join('\n\n').trim();
     const systemInstruction = { parts: [{ text: systemText }] };
     const contents = [];
 

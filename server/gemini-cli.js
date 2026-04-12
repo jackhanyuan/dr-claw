@@ -622,7 +622,7 @@ export async function spawnGemini(command, options = {}, ws) {
       // Memory is prepended to the user prompt because Gemini CLI uses --prompt flag
       // and does not expose a separate system instruction API.
       const memoryBlock = options.userId ? buildMemoryBlock(options.userId) : '';
-      const guardedMemory = (memoryBlock + COMPUTE_GUARD_BLOCK).trim();
+      const guardedMemory = [memoryBlock, COMPUTE_GUARD_BLOCK].filter(Boolean).join('\n\n').trim();
       const effectivePrompt = guardedMemory
         ? `${guardedMemory}\n\n${attachmentResult.modifiedCommand}`
         : `${attachmentResult.modifiedCommand}`;

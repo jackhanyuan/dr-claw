@@ -766,7 +766,7 @@ export async function queryLocalGPU(command, options = {}, ws) {
     });
 
     const memoryBlock = options.userId ? buildMemoryBlock(options.userId) : '';
-    const systemContent = (customSystemPrompt || await buildSystemPrompt(workingDirectory)) + memoryBlock + COMPUTE_GUARD_BLOCK;
+    const systemContent = [(customSystemPrompt || await buildSystemPrompt(workingDirectory)), memoryBlock, COMPUTE_GUARD_BLOCK].filter(Boolean).join('\n\n').trim();
     const messages = [{ role: 'system', content: systemContent }];
 
     if (sessionId) {

@@ -5,7 +5,7 @@
  */
 export const COMPUTE_GUARD_BLOCK = `
 
-# Compute Resource Guard
+**CRITICAL SAFETY RULE — Compute Resource Guard**
 
 BEFORE running ANY experiment, training script, evaluation, or GPU-intensive task — whether invoked via a skill or asked in natural language — you MUST first check that adequate compute resources are available.
 
