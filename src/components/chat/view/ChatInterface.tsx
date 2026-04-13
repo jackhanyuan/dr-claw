@@ -22,7 +22,7 @@ import { authenticatedFetch } from '../../../utils/api';
 import { readCliAvailability, writeCliAvailability } from '../../../utils/cliAvailability';
 import { Button } from '../../ui/button';
 import type { PendingAutoIntake } from '../../../types/app';
-import type { EditingFile } from '../../main-content/types/types';
+import type { EditingFile, DiffInfo } from '../../main-content/types/types';
 import { CLAUDE_MODELS, CURSOR_MODELS, CODEX_MODELS, GEMINI_MODELS, LOCAL_MODELS, NANO_CLAUDE_CODE_MODELS, OPENROUTER_MODELS } from '../../../../shared/modelConstants';
 import { getProviderDisplayName } from '../utils/chatFormatting';
 import { normalizePath, toRelativePath, isSafePath, fileNameFromPath } from '../../../utils/pathUtils';
@@ -124,7 +124,7 @@ function ChatInterface({
       name,
       path: relative,
       projectName: selectedProject?.name,
-      diffInfo: diffInfo ?? null,
+      diffInfo: (diffInfo ?? null) as DiffInfo | null,
     });
   }, [selectedProject]);
 
