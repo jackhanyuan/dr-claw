@@ -33,16 +33,12 @@ export default function ChatTabBar({ tabs, processingSessions, onSwitchTab, onCl
     }
 
     let nextIndex: number | null = null;
-    // Cmd+Opt (macOS) or Ctrl+Alt (Windows/Linux)
-    const modKey = (e.metaKey || e.ctrlKey) && e.altKey;
 
     switch (e.key) {
       case 'ArrowRight':
-        if (!modKey) return;
         nextIndex = (tabIndex + 1) % tabs.length;
         break;
       case 'ArrowLeft':
-        if (!modKey) return;
         nextIndex = (tabIndex - 1 + tabs.length) % tabs.length;
         break;
       case 'Home':
