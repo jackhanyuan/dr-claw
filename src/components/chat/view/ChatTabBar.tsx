@@ -26,12 +26,15 @@ export default function ChatTabBar({ tabs, processingSessions, onSwitchTab, onCl
 
   const handleTabKeyDown = (e: React.KeyboardEvent, tabIndex: number) => {
     let nextIndex: number | null = null;
+    const modKey = e.metaKey && e.altKey; // Cmd+Opt on macOS
 
     switch (e.key) {
       case 'ArrowRight':
+        if (!modKey) return;
         nextIndex = (tabIndex + 1) % tabs.length;
         break;
       case 'ArrowLeft':
+        if (!modKey) return;
         nextIndex = (tabIndex - 1 + tabs.length) % tabs.length;
         break;
       case 'Home':
