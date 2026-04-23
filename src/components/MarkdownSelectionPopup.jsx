@@ -326,6 +326,26 @@ function MarkdownSelectionPopup({ containerRef, onStartSession, onOpenOverlay, p
     return () => container.removeEventListener('mouseup', handleMouseUp);
   }, [containerRef]);
 
+  const handleClose = useCallback(() => {
+    if (queryId) {
+      authenticatedFetch('/api/quick-qa/abort', {
+        method: 'POST',
+        body: JSON.stringify({ queryId }),
+      }).catch(() => {});
+    }
+    setHighlightRects([]);
+    setPopupState('hidden');
+    setSelectedText('');
+    setAnswer('');
+    setFullResult('');
+    setQuestion('');
+    setQueryId(null);
+    setActiveMode('fast');
+    setExpanded(false);
+    setStartTime(null);
+    setElapsed(0);
+  }, [queryId]);
+
   // Close popup on click outside (only in ready state)
   useEffect(() => {
     if (popupState !== 'ready') return;
@@ -376,26 +396,6 @@ function MarkdownSelectionPopup({ containerRef, onStartSession, onOpenOverlay, p
       }
     }
   }, [popupState, expanded, isBackgroundMode]);
-
-  const handleClose = useCallback(() => {
-    if (queryId) {
-      authenticatedFetch('/api/quick-qa/abort', {
-        method: 'POST',
-        body: JSON.stringify({ queryId }),
-      }).catch(() => {});
-    }
-    setHighlightRects([]);
-    setPopupState('hidden');
-    setSelectedText('');
-    setAnswer('');
-    setFullResult('');
-    setQuestion('');
-    setQueryId(null);
-    setActiveMode('fast');
-    setExpanded(false);
-    setStartTime(null);
-    setElapsed(0);
-  }, [queryId]);
 
   /**
    * Stream an SSE response from /api/quick-qa for all modes.
