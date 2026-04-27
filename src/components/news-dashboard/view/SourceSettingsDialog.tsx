@@ -154,16 +154,26 @@ function EditableNumberInput({
 function TokenInput({
   value,
   onChange,
+  onClear,
   placeholder,
   envVarLabel,
+  isSaved,
 }: {
-  value: string;
+  // string = user-entered draft; null = explicit pending-clear; undefined = no entry
+  value: string | null | undefined;
   onChange: (next: string) => void;
+  onClear?: () => void;
   placeholder: string;
   envVarLabel: string;
+  isSaved?: boolean;
 }) {
   const { t } = useTranslation('news');
   const [reveal, setReveal] = useState(false);
+
+  const displayValue = typeof value === 'string' ? value : '';
+  const pendingClear = value === null;
+  const showSavedBadge = !!isSaved && !displayValue && !pendingClear;
+
   return (
     <div className="space-y-1.5">
       <label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
@@ -176,9 +186,9 @@ function TokenInput({
       <div className="relative">
         <input
           type={reveal ? 'text' : 'password'}
-          value={value}
+          value={displayValue}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
+          placeholder={showSavedBadge ? t('settings.tokenSavedPlaceholder') : placeholder}
           autoComplete="off"
           spellCheck={false}
           className="w-full rounded-lg border border-border/50 bg-background px-3 py-2 pr-10 text-sm font-mono focus:border-primary/40 focus:outline-none focus:ring-1 focus:ring-primary/20"
@@ -192,7 +202,29 @@ function TokenInput({
           {reveal ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
         </button>
       </div>
-      <p className="text-[10px] text-muted-foreground/70">{t('settings.tokenHelp')}</p>
+      {showSavedBadge ? (
+        <p className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground/70">
+          <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+            <span aria-hidden>✓</span>
+            {t('settings.tokenSavedIndicator')}
+          </span>
+          {onClear && (
+            <button
+              type="button"
+              onClick={onClear}
+              className="rounded text-[10px] font-medium text-muted-foreground underline-offset-2 hover:text-destructive hover:underline transition-colors"
+            >
+              {t('settings.tokenClearAction')}
+            </button>
+          )}
+        </p>
+      ) : pendingClear ? (
+        <p className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+          {t('settings.tokenPendingClear')}
+        </p>
+      ) : (
+        <p className="text-[10px] text-muted-foreground/70">{t('settings.tokenHelp')}</p>
+      )}
     </div>
   );
 }
@@ -557,8 +589,10 @@ export default function SourceSettingsDialog({
             <h4 className="text-sm font-semibold text-foreground">{t('settings.authentication')}</h4>
             <p className="text-[11px] text-muted-foreground">{t('settings.githubAuthDescription')}</p>
             <TokenInput
-              value={typeof config.api_token === 'string' ? config.api_token : ''}
+              value={config.api_token as string | null | undefined}
               onChange={(next) => updateField('api_token', next)}
+              onClear={() => updateField('api_token', null)}
+              isSaved={config.api_token_set === true}
               placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
               envVarLabel="GITHUB_TOKEN"
             />
@@ -569,8 +603,10 @@ export default function SourceSettingsDialog({
             <h4 className="text-sm font-semibold text-foreground">{t('settings.authentication')}</h4>
             <p className="text-[11px] text-muted-foreground">{t('settings.hfAuthDescription')}</p>
             <TokenInput
-              value={typeof config.api_token === 'string' ? config.api_token : ''}
+              value={config.api_token as string | null | undefined}
               onChange={(next) => updateField('api_token', next)}
+              onClear={() => updateField('api_token', null)}
+              isSaved={config.api_token_set === true}
               placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
               envVarLabel="HF_TOKEN"
             />
@@ -688,8 +724,10 @@ export default function SourceSettingsDialog({
                 <p className="text-[10px] text-muted-foreground/70">{t('settings.wechatInstanceHelp')}</p>
               </div>
               <TokenInput
-                value={typeof config.access_key === 'string' ? config.access_key : ''}
+                value={config.access_key as string | null | undefined}
                 onChange={(next) => updateField('access_key', next)}
+                onClear={() => updateField('access_key', null)}
+                isSaved={config.access_key_set === true}
                 placeholder={t('settings.wechatAccessKeyPlaceholder')}
                 envVarLabel="?key=…"
               />
