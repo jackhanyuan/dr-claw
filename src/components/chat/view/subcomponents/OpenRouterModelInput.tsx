@@ -11,6 +11,38 @@ type ModelOption = {
 
 let _modelsCache: ModelOption[] | null = null;
 
+function mergeAndPrioritizeModels(
+  curated: Array<{ value: string; label: string }>,
+  live: ModelOption[],
+): ModelOption[] {
+  const merged = new Map<string, ModelOption>();
+  for (const model of curated) {
+    merged.set(model.value, { ...model });
+  }
+  for (const model of live) {
+    if (!model?.value) continue;
+    if (!merged.has(model.value)) {
+      merged.set(model.value, model);
+    } else {
+      const existing = merged.get(model.value)!;
+      merged.set(model.value, {
+        ...model,
+        label: existing.label || model.label,
+      });
+    }
+  }
+
+  const curatedOrder = new Map(curated.map((m, i) => [m.value, i]));
+  return Array.from(merged.values()).sort((a, b) => {
+    const aCurated = curatedOrder.has(a.value);
+    const bCurated = curatedOrder.has(b.value);
+    if (aCurated && bCurated) return curatedOrder.get(a.value)! - curatedOrder.get(b.value)!;
+    if (aCurated) return -1;
+    if (bCurated) return 1;
+    return a.label.localeCompare(b.label);
+  });
+}
+
 interface OpenRouterModelInputProps {
   value: string;
   options: Array<{ value: string; label: string }>;
@@ -44,15 +76,21 @@ export default function OpenRouterModelInput({
       if (res.ok) {
         const data = await res.json();
         if (data.models?.length) {
-          _modelsCache = data.models;
-          setModels(data.models);
+          const merged = mergeAndPrioritizeModels(fallbackOptions, data.models);
+          _modelsCache = merged;
+          setModels(merged);
+          return;
         }
       }
     } catch {
       /* use fallback */
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, []);
+    const fallbackMerged = mergeAndPrioritizeModels(fallbackOptions, []);
+    _modelsCache = fallbackMerged;
+    setModels(fallbackMerged);
+  }, [fallbackOptions]);
 
   useEffect(() => {
     if (open) {

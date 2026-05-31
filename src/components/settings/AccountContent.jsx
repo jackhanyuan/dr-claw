@@ -70,6 +70,31 @@ const agentConfig = {
   },
 };
 
+async function parseJsonResponseSafe(res) {
+  const contentType = (res.headers.get('content-type') || '').toLowerCase();
+  const bodyText = await res.text();
+
+  if (contentType.includes('application/json')) {
+    try {
+      return JSON.parse(bodyText || '{}');
+    } catch {
+      throw new Error('Server returned invalid JSON. Please try again.');
+    }
+  }
+
+  const trimmed = bodyText.trim().toLowerCase();
+  const looksLikeHtml = trimmed.startsWith('<!doctype') || trimmed.startsWith('<html');
+  if (looksLikeHtml) {
+    throw new Error('Server returned an HTML page instead of API JSON. This usually happens when the API server is restarting or session/proxy state is stale. Please refresh and try again.');
+  }
+
+  if (!bodyText.trim()) {
+    throw new Error(`Empty response from server (HTTP ${res.status}).`);
+  }
+
+  throw new Error(`Unexpected server response (HTTP ${res.status}): ${bodyText.slice(0, 140)}`);
+}
+
 export default function AccountContent({ agent, authStatus, onLogin }) {
   const { t } = useTranslation('settings');
   const config = agentConfig[agent];
@@ -289,7 +314,7 @@ export default function AccountContent({ agent, authStatus, onLogin }) {
         method: 'POST',
         body: JSON.stringify({ apiKey: openrouterApiKey.trim() }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponseSafe(res);
       if (res.ok) {
         setOpenrouterVerifyResult({ success: true, message: data.message || 'API key verified and saved.' });
         setOpenrouterApiKey('');
@@ -311,7 +336,7 @@ export default function AccountContent({ agent, authStatus, onLogin }) {
         method: 'POST',
         body: JSON.stringify({ apiKey: openaiApiKey.trim() }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponseSafe(res);
       if (res.ok) {
         setOpenaiVerifyResult({ success: true, message: data.message || 'API key verified and saved.' });
         setOpenaiApiKey('');
@@ -333,7 +358,7 @@ export default function AccountContent({ agent, authStatus, onLogin }) {
         method: 'POST',
         body: JSON.stringify({ apiKey: geminiApiKey.trim() }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponseSafe(res);
       if (res.ok) {
         setGeminiVerifyResult({ success: true, message: data.message || 'API key verified and saved.' });
         setGeminiApiKey('');

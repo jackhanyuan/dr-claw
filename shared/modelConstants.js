@@ -77,19 +77,39 @@ export const CODEX_MODELS = {
 export const OPENROUTER_MODELS = {
   OPTIONS: [
     // Anthropic
+    { value: 'anthropic/claude-opus-4.8', label: 'Claude Opus 4.8 (Anthropic)' },
+    { value: 'anthropic/claude-opus-4.7', label: 'Claude Opus 4.7 (Anthropic)' },
+    { value: 'anthropic/claude-sonnet-4.6', label: 'Claude Sonnet 4.6 (Anthropic)' },
+    { value: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5 (Anthropic)' },
+    { value: 'anthropic/claude-haiku-4.5', label: 'Claude Haiku 4.5 (Anthropic)' },
     { value: 'anthropic/claude-sonnet-4', label: 'Claude Sonnet 4 (Anthropic)' },
     { value: 'anthropic/claude-opus-4', label: 'Claude Opus 4 (Anthropic)' },
     { value: 'anthropic/claude-haiku-3.5', label: 'Claude 3.5 Haiku (Anthropic)' },
     // OpenAI
+    { value: 'openai/gpt-5.5-pro', label: 'GPT-5.5 Pro (OpenAI)' },
+    { value: 'openai/gpt-5.5', label: 'GPT-5.5 (OpenAI)' },
+    { value: 'openai/gpt-5.4-pro', label: 'GPT-5.4 Pro (OpenAI)' },
+    { value: 'openai/gpt-5.4', label: 'GPT-5.4 (OpenAI)' },
+    { value: 'openai/gpt-5.3-chat', label: 'GPT-5.3 Chat (OpenAI)' },
+    { value: 'openai/gpt-5.3-codex', label: 'GPT-5.3 Codex (OpenAI)' },
     { value: 'openai/gpt-5', label: 'GPT-5 (OpenAI)' },
     { value: 'openai/gpt-4.1', label: 'GPT-4.1 (OpenAI)' },
     { value: 'openai/gpt-4.1-mini', label: 'GPT-4.1 Mini (OpenAI)' },
     { value: 'openai/o3', label: 'O3 (OpenAI)' },
     { value: 'openai/o4-mini', label: 'O4 Mini (OpenAI)' },
     // Google
+    { value: 'google/gemini-3.5-flash', label: 'Gemini 3.5 Flash (Google)' },
+    { value: 'google/gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview (Google)' },
+    { value: 'google/gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite (Google)' },
     { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro (Google)' },
     { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash (Google)' },
+    // Moonshot
+    { value: 'moonshotai/kimi-k2.6', label: 'Kimi K2.6 (Moonshot)' },
+    { value: 'moonshotai/kimi-k2.5', label: 'Kimi K2.5 (Moonshot)' },
     // DeepSeek
+    { value: 'deepseek/deepseek-v4-pro', label: 'DeepSeek V4 Pro' },
+    { value: 'deepseek/deepseek-v4-flash', label: 'DeepSeek V4 Flash' },
+    { value: 'deepseek/deepseek-chat-v3.1', label: 'DeepSeek Chat V3.1' },
     { value: 'deepseek/deepseek-r1', label: 'DeepSeek R1' },
     { value: 'deepseek/deepseek-chat-v3-0324', label: 'DeepSeek V3 0324' },
     // Meta
@@ -99,9 +119,13 @@ export const OPENROUTER_MODELS = {
     { value: 'mistralai/mistral-large', label: 'Mistral Large' },
     { value: 'mistralai/codestral', label: 'Codestral (Mistral)' },
     // Qwen
+    { value: 'qwen/qwen3.7-max', label: 'Qwen 3.7 Max' },
+    { value: 'qwen/qwen3-coder-next', label: 'Qwen3 Coder Next' },
     { value: 'qwen/qwen3-235b-a22b', label: 'Qwen3 235B' },
     { value: 'qwen/qwen3-32b', label: 'Qwen3 32B' },
     // xAI
+    { value: 'x-ai/grok-4.20', label: 'Grok 4.20 (xAI)' },
+    { value: 'x-ai/grok-4.3', label: 'Grok 4.3 (xAI)' },
     { value: 'x-ai/grok-3', label: 'Grok 3 (xAI)' },
     { value: 'x-ai/grok-3-mini', label: 'Grok 3 Mini (xAI)' },
     // Cohere
