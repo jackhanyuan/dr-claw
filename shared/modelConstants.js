@@ -13,6 +13,8 @@
 export const CLAUDE_MODELS = {
   // Models in SDK format (what the actual SDK accepts)
   OPTIONS: [
+    { value: 'claude-fable-5', label: 'Fable 5' },
+    { value: 'claude-fable-5[1m]', label: 'Fable 5 [1M]' },
     { value: 'sonnet', label: 'Sonnet' },
     { value: 'opus', label: 'Opus' },
     { value: 'haiku', label: 'Haiku' },
@@ -22,7 +24,7 @@ export const CLAUDE_MODELS = {
     { value: 'claude-opus-4-6', label: 'Opus 4.6' }
   ],
 
-  DEFAULT: (typeof process !== 'undefined' && process.env?.ANTHROPIC_MODEL) || 'claude-opus-4-6'
+  DEFAULT: (typeof process !== 'undefined' && process.env?.ANTHROPIC_MODEL) || 'claude-fable-5'
 };
 
 /**
@@ -49,7 +51,7 @@ export const CURSOR_MODELS = {
     { value: 'grok', label: 'Grok' }
   ],
 
-  DEFAULT: 'gpt-5'
+  DEFAULT: 'gpt-5.2'
 };
 
 /**
@@ -67,7 +69,7 @@ export const CODEX_MODELS = {
     { value: 'o4-mini', label: 'O4-mini' }
   ],
 
-  DEFAULT: 'gpt-5.4'
+  DEFAULT: 'gpt-5.5'
 };
 
 /**
@@ -134,7 +136,7 @@ export const OPENROUTER_MODELS = {
 
   ALLOWS_CUSTOM: true,
 
-  DEFAULT: (typeof process !== 'undefined' && process.env?.OPENROUTER_MODEL) || 'anthropic/claude-sonnet-4'
+  DEFAULT: (typeof process !== 'undefined' && process.env?.OPENROUTER_MODEL) || 'anthropic/claude-sonnet-4.6'
 };
 
 /**
@@ -171,13 +173,14 @@ export const LOCAL_MODELS = {
  */
 export const GEMINI_MODELS = {
   OPTIONS: [
+    { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
     { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview' },
-    { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite Preview' },
+    { value: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite' },
     { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview' },
     { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
     { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
     { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' }
   ],
 
-  DEFAULT: 'gemini-2.5-flash'
+  DEFAULT: 'gemini-3.5-flash'
 };
