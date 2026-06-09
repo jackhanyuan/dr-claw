@@ -24,7 +24,7 @@ export const CLAUDE_MODELS = {
     { value: 'claude-opus-4-6', label: 'Opus 4.6' }
   ],
 
-  DEFAULT: (typeof process !== 'undefined' && process.env?.ANTHROPIC_MODEL) || 'claude-opus-4-6'
+  DEFAULT: (typeof process !== 'undefined' && process.env?.ANTHROPIC_MODEL) || 'claude-fable-5'
 };
 
 /**
@@ -51,7 +51,7 @@ export const CURSOR_MODELS = {
     { value: 'grok', label: 'Grok' }
   ],
 
-  DEFAULT: 'gpt-5'
+  DEFAULT: 'gpt-5.2'
 };
 
 /**
@@ -136,7 +136,7 @@ export const OPENROUTER_MODELS = {
 
   ALLOWS_CUSTOM: true,
 
-  DEFAULT: (typeof process !== 'undefined' && process.env?.OPENROUTER_MODEL) || 'anthropic/claude-sonnet-4'
+  DEFAULT: (typeof process !== 'undefined' && process.env?.OPENROUTER_MODEL) || 'anthropic/claude-sonnet-4.6'
 };
 
 /**
@@ -181,5 +181,5 @@ export const GEMINI_MODELS = {
     { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' }
   ],
 
-  DEFAULT: 'gemini-2.5-flash'
+  DEFAULT: 'gemini-3-flash-preview'
 };
