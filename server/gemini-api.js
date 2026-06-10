@@ -312,7 +312,9 @@ async function executeTool(name, rawArgs, workingDir) {
         const count = source.split(oldString).length - 1;
         if (count === 0) return `Error: old_str not found in ${getFileArg(args)}`;
         if (count > 1) return `Error: old_str matches ${count} times — add more context to make it unique`;
-        await fs.writeFile(filePath, source.replace(oldString, newString), 'utf-8');
+        // Use a replacer function so `$` sequences in newString (e.g. `$1`, `$&`, `$$`)
+        // are inserted verbatim instead of being treated as substitution patterns.
+        await fs.writeFile(filePath, source.replace(oldString, () => newString), 'utf-8');
         return `Edited ${getFileArg(args)}`;
       }
 

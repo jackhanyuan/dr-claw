@@ -28,7 +28,9 @@ export default function spawnAsync(command, args, options = {}) {
     let stderr = '';
     let truncated = false;
 
-    child.stdout.on('data', (data) => {
+    // Guard the stream listeners — stdout/stderr are null if a caller passes a
+    // stdio option that disables the pipes.
+    child.stdout?.on('data', (data) => {
       if (!truncated) {
         stdout += data.toString();
         if (stdout.length > maxBuffer) {
@@ -42,7 +44,7 @@ export default function spawnAsync(command, args, options = {}) {
       }
     });
 
-    child.stderr.on('data', (data) => {
+    child.stderr?.on('data', (data) => {
       if (stderr.length < maxBuffer) {
         stderr += data.toString();
         if (stderr.length > maxBuffer) {

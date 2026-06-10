@@ -1129,13 +1129,10 @@ router.post('/claude/verify-custom-api', async (req, res) => {
         envContent = await fs.readFile(envPath, 'utf8');
       } catch (e) {}
 
-      const lines = envContent ? envContent.split(/\r?\n/) : [];
-      const nextLines = lines.filter((line) => !line.startsWith('ANTHROPIC_BASE_URL=') && !line.startsWith('ANTHROPIC_AUTH_TOKEN='));
-      nextLines.push(`ANTHROPIC_BASE_URL=${baseUrl || 'https://api.anthropic.com'}`);
-      nextLines.push(`ANTHROPIC_AUTH_TOKEN=${token}`);
-      await fs.writeFile(envPath, `${nextLines.filter(Boolean).join('\n')}\n`, 'utf8');
-
-      return res.json({ success: true });
+      // Persist the verified custom API config. The Claude Code SDK expects
+      // ANTHROPIC_API_KEY (sent as x-api-key); ANTHROPIC_AUTH_TOKEN is the legacy var
+      // that load-env.js migrates away, so we write API_KEY and drop AUTH_TOKEN here.
+      // We also update process.env so the change takes effect without a restart.
       const keysToUpdate = {
         'ANTHROPIC_BASE_URL': baseUrl || 'https://api.anthropic.com',
         'ANTHROPIC_API_KEY': token,
@@ -1178,8 +1175,6 @@ router.post('/claude/verify-custom-api', async (req, res) => {
       const err = await response.text();
       return res.status(response.status).json({ error: `Verification failed: ${err}` });
     }
-
-    return res.status(400).json({ error: 'Failed to verify custom API token' });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }

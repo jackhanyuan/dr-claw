@@ -2969,6 +2969,22 @@ app.get('*', (req, res) => {
   }
 });
 
+// Global error handler — final safety net for synchronous throws, body-parser
+// failures (e.g. malformed JSON), and errors forwarded via next(err). Returns a
+// consistent JSON shape and never leaks stack traces to clients. Declared with the
+// 4-arg signature Express requires to recognize error-handling middleware.
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  console.error('[ERROR] Unhandled request error:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({
+    error: status >= 400 && status < 500 ? 'Bad request' : 'Internal server error',
+  });
+});
+
 // Helper function to convert permissions to rwx format
 function permToRwx(perm) {
     const r = perm & 4 ? 'r' : '-';
@@ -3240,5 +3256,38 @@ async function startServer() {
         process.exit(1);
     }
 }
+
+// Graceful shutdown — clean up PTY (terminal) sessions, WebSocket connections and the
+// HTTP server on SIGTERM/SIGINT (e.g. when the Electron shell quits or a deploy restarts
+// the process) so in-flight work and SQLite WAL writes are flushed cleanly instead of the
+// process being hard-killed. A force-exit timer guarantees we never hang on shutdown.
+let shuttingDown = false;
+function gracefulShutdown(signal) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`\n${c.info('[INFO]')} Received ${signal}, shutting down gracefully...`);
+
+    // Backstop: force-exit if graceful close stalls. Unref'd so it can't keep us alive.
+    setTimeout(() => process.exit(0), 3000).unref();
+
+    // Kill active PTY sessions.
+    for (const session of ptySessionsMap.values()) {
+        try { session.pty?.kill(); } catch {}
+    }
+    ptySessionsMap.clear();
+
+    // Terminate WebSocket clients so server.close() can complete, then close servers.
+    try {
+        for (const client of wss.clients) {
+            try { client.terminate(); } catch {}
+        }
+        wss.close();
+    } catch {}
+
+    server.close(() => process.exit(0));
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 startServer();

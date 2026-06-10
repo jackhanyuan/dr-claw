@@ -238,8 +238,11 @@ router.get('/status', async (req, res) => {
     }
 
     const resolvedPath = path.resolve(projectPath);
-    // Validate path is within home directory to prevent path traversal
-    if (!resolvedPath.startsWith(os.homedir())) {
+    // Validate path is within home directory to prevent path traversal.
+    // Compare against a resolved home dir with a trailing separator so a sibling
+    // directory sharing the prefix (e.g. /Users/victimEvil) cannot bypass the check.
+    const home = path.resolve(os.homedir());
+    if (resolvedPath !== home && !resolvedPath.startsWith(home + path.sep)) {
       return res.status(403).json({ error: 'Invalid path' });
     }
     const status = {

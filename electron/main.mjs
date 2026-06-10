@@ -697,7 +697,8 @@ function registerIpcHandlers() {
 
   ipcMain.handle('notification:show', (_event, title, body) => {
     if (Notification.isSupported()) {
-      const notification = new Notification({ title, body });
+      // Coerce to strings — the Notification constructor throws on non-string input.
+      const notification = new Notification({ title: String(title ?? ''), body: String(body ?? '') });
       notification.show();
       return true;
     }
@@ -705,7 +706,8 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('clipboard:writeText', (_event, text) => {
-    clipboard.writeText(text);
+    // clipboard.writeText throws on non-string input; coerce defensively.
+    clipboard.writeText(String(text ?? ''));
   });
 
   ipcMain.handle('clipboard:readText', () => {

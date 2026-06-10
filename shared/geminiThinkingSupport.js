@@ -30,6 +30,8 @@ export function getSupportedGeminiThinkingModes(model) {
   switch (model) {
     case 'gemini-3.1-pro-preview':
       return ['default', 'low', 'medium', 'high'];
+    case 'gemini-3.5-flash':
+    case 'gemini-3.1-flash-lite':
     case 'gemini-3.1-flash-lite-preview':
     case 'gemini-3-flash-preview':
       return ['default', 'minimal', 'low', 'medium', 'high'];

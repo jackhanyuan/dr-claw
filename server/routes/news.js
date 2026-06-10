@@ -730,6 +730,9 @@ async function handleSearch(sourceName, req, res) {
       if (stderrBuf.trim()) logs.push(stderrBuf.trim());
       try { await fs.writeFile(logPath, JSON.stringify(logs), 'utf8'); } catch {}
 
+      // A spawn failure can emit both 'error' and 'close'; guard against a double response.
+      if (res.headersSent) return;
+
       if (code !== 0) {
         console.error(`[news][${sourceName}] script failed (exit ${code})`);
         return res.status(500).json({
@@ -745,12 +748,15 @@ async function handleSearch(sourceName, req, res) {
         results.logs = logs;
         res.json(results);
       } catch (readErr) {
-        res.status(500).json({ error: 'Failed to read search results', details: readErr.message });
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Failed to read search results', details: readErr.message });
+        }
       }
     });
 
     child.on('error', (err) => {
       console.error(`[news][${sourceName}] Failed to spawn script:`, err);
+      if (res.headersSent) return;
       res.status(500).json({ error: 'Failed to execute search script', details: err.message });
     });
   } catch (err) {

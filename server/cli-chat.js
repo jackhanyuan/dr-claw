@@ -193,7 +193,9 @@ async function executeTool(name, args, workingDir) {
         const count = src.split(args.old_str).length - 1;
         if (count === 0) return `Error: old_str not found in ${args.path}`;
         if (count > 1) return `Error: old_str matches ${count} times`;
-        await fs.writeFile(fp, src.replace(args.old_str, args.new_str), 'utf-8');
+        // Use a replacer function so `$` sequences in new_str (e.g. `$1`, `$&`, `$$`)
+        // are inserted verbatim instead of being treated as substitution patterns.
+        await fs.writeFile(fp, src.replace(args.old_str, () => args.new_str), 'utf-8');
         return `Edited ${args.path}`;
       }
       case 'Bash': {

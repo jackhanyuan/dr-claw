@@ -479,7 +479,7 @@ router.post('/list', async (req, res) => {
  */
 router.post('/load', async (req, res) => {
   try {
-    const { commandPath } = req.body;
+    const { commandPath, projectPath } = req.body;
 
     if (!commandPath) {
       return res.status(400).json({
@@ -487,10 +487,20 @@ router.post('/load', async (req, res) => {
       });
     }
 
-    // Security: Prevent path traversal
+    // Security: validate commandPath is strictly within an allowed .claude/commands
+    // directory (user-level, or the supplied project). Using path.relative containment
+    // prevents traversal and the previous "anything under $HOME" / substring bypass that
+    // allowed reading arbitrary home files (e.g. ~/.ssh/id_rsa, ~/.claude/.credentials.json).
     const resolvedPath = path.resolve(commandPath);
-    if (!resolvedPath.startsWith(path.resolve(os.homedir())) &&
-        !resolvedPath.includes('.claude/commands')) {
+    const userBase = path.resolve(path.join(os.homedir(), '.claude', 'commands'));
+    const projectBase = projectPath
+      ? path.resolve(path.join(projectPath, '.claude', 'commands'))
+      : null;
+    const isUnder = (base) => {
+      const rel = path.relative(base, resolvedPath);
+      return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+    };
+    if (!(isUnder(userBase) || (projectBase && isUnder(projectBase)))) {
       return res.status(403).json({
         error: 'Access denied',
         message: 'Command must be in .claude/commands directory'

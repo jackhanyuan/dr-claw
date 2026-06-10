@@ -735,9 +735,11 @@ router.post('/:projectName/upload-skill', async (req, res) => {
             continue; // Skip files outside the skill directory
           }
 
-          // Path traversal protection
+          // Path traversal protection (zip-slip). Compare against a resolved root with a
+          // trailing separator so a sibling dir sharing the prefix cannot escape extraction.
+          const safeRoot = path.resolve(extractedDir);
           const resolved = path.resolve(extractedDir, relativePath);
-          if (!resolved.startsWith(extractedDir)) {
+          if (resolved !== safeRoot && !resolved.startsWith(safeRoot + path.sep)) {
             continue; // Skip dangerous paths
           }
 

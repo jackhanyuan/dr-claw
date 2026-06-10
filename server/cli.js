@@ -213,13 +213,21 @@ function showVersion() {
     console.log(`${packageJson.version}`);
 }
 
-// Compare semver versions, returns true if v1 > v2
+// Compare semver versions, returns true if v1 > v2.
+// Strips any prerelease/build suffix and coerces non-numeric or missing parts to 0 so
+// versions like "2.0.0-beta.1" or a 2-part "2.1" never produce NaN/undefined comparisons.
 function isNewerVersion(v1, v2) {
-    const parts1 = v1.split('.').map(p => parseInt(p, 10));
-    const parts2 = v2.split('.').map(p => parseInt(p, 10));
+    const parse = (v) => String(v).split('.').map(p => {
+        const n = parseInt(p, 10);
+        return Number.isNaN(n) ? 0 : n;
+    });
+    const parts1 = parse(v1);
+    const parts2 = parse(v2);
     for (let i = 0; i < 3; i++) {
-        if (parts1[i] > parts2[i]) return true;
-        if (parts1[i] < parts2[i]) return false;
+        const a = parts1[i] || 0;
+        const b = parts2[i] || 0;
+        if (a > b) return true;
+        if (a < b) return false;
     }
     return false;
 }
