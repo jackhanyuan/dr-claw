@@ -70,8 +70,17 @@ const useWebSocketProviderState = (): WebSocketContextType => {
       if (drainTimerRef.current) {
         clearTimeout(drainTimerRef.current);
       }
-      if (wsRef.current) {
-        wsRef.current.close();
+      const socket = wsRef.current;
+      wsRef.current = null;
+      if (socket) {
+        // Detach handlers before closing so a socket that closes during teardown
+        // (including one still in CONNECTING state) cannot schedule a reconnect or
+        // mutate state from a torn-down effect.
+        socket.onopen = null;
+        socket.onclose = null;
+        socket.onmessage = null;
+        socket.onerror = null;
+        socket.close();
       }
     };
   }, [token]);
@@ -82,13 +91,16 @@ const useWebSocketProviderState = (): WebSocketContextType => {
       const wsUrl = buildWebSocketUrl(token);
 
       if (!wsUrl) return console.warn('No authentication token found for WebSocket connection');
-      
+
       const websocket = new WebSocket(wsUrl);
+      // Track the socket immediately (not just in onopen) so effect cleanup can always
+      // close an in-flight CONNECTING socket and we never leak a half-open connection.
+      wsRef.current = websocket;
 
       websocket.onopen = () => {
+        if (wsRef.current !== websocket) return; // superseded by a newer connection
         retryCountRef.current = 0;
         setIsConnected(true);
-        wsRef.current = websocket;
       };
 
       websocket.onmessage = (event) => {
@@ -104,8 +116,11 @@ const useWebSocketProviderState = (): WebSocketContextType => {
       };
 
       websocket.onclose = () => {
+        if (wsRef.current !== websocket) return; // a newer socket replaced this one
         setIsConnected(false);
         wsRef.current = null;
+
+        if (unmountedRef.current) return; // do not reconnect after teardown
 
         const delay = Math.min(3000 * Math.pow(2, retryCountRef.current), 30000);
         retryCountRef.current++;

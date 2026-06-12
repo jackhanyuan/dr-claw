@@ -129,8 +129,10 @@ export async function processFileIncludes(content, basePath, depth = 0) {
       // Recursively process includes in the included file
       const processedContent = await processFileIncludes(fileContent, basePath, depth + 1);
 
-      // Replace the @filename with the file content
-      result = result.replace(fullMatch, fullMatch.startsWith(' ') ? ' ' + processedContent : processedContent);
+      // Replace the @filename with the file content. Use a replacer function so any
+      // `$` sequences in the included file content are inserted verbatim.
+      const replacement = fullMatch.startsWith(' ') ? ' ' + processedContent : processedContent;
+      result = result.replace(fullMatch, () => replacement);
     } catch (error) {
       if (error.code === 'ENOENT') {
         throw new Error(`File not found: ${filename}`);
@@ -289,8 +291,10 @@ export async function processBashCommands(content, options = {}) {
 
       const output = sanitizeOutput(stdout || stderr || '');
 
-      // Replace the !command with the output
-      result = result.replace(fullMatch, fullMatch.startsWith('\n') ? '\n' + output : output);
+      // Replace the !command with the output. Use a replacer function so any
+      // `$` sequences in the command output are inserted verbatim.
+      const replacement = fullMatch.startsWith('\n') ? '\n' + output : output;
+      result = result.replace(fullMatch, () => replacement);
     } catch (error) {
       if (error.killed) {
         throw new Error(`Command timeout: ${commandString}`);

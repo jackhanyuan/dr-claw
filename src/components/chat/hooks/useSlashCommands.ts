@@ -80,6 +80,10 @@ export function useSlashCommands({
   }, [clearCommandQueryTimer]);
 
   useEffect(() => {
+    // Guard against a stale response winning a race when the project changes quickly:
+    // an earlier request that resolves after a later one must not overwrite state.
+    let cancelled = false;
+
     const fetchCommands = async () => {
       if (!selectedProject) {
         setSlashCommands([]);
@@ -103,6 +107,8 @@ export function useSlashCommands({
         }
 
         const data = await response.json();
+        if (cancelled) return;
+
         const allCommands: SlashCommand[] = [
           ...((data.builtIn || []) as SlashCommand[]).map((command) => ({
             ...command,
@@ -123,12 +129,17 @@ export function useSlashCommands({
 
         setSlashCommands(sortedCommands);
       } catch (error) {
+        if (cancelled) return;
         console.error('Error fetching slash commands:', error);
         setSlashCommands([]);
       }
     };
 
     fetchCommands();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedProject]);
 
   useEffect(() => {

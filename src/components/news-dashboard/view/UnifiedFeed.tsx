@@ -210,7 +210,12 @@ export default function UnifiedFeed({
         {papers.length > 0 ? (
           <div className="max-h-[1200px] overflow-y-auto grid gap-4 p-5 pt-0 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
             {papers.map((item, index) => (
-              <NewsItemCard key={item.id} item={item} index={index} sourceKey={key} />
+              <NewsItemCard
+                key={`${key}-${item.id ?? item.link ?? index}`}
+                item={item}
+                index={index}
+                sourceKey={key}
+              />
             ))}
           </div>
         ) : !searching && !error ? (

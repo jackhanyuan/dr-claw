@@ -1695,6 +1695,20 @@ router.get('/prd/:projectName', async (req, res) => {
 });
 
 /**
+ * Validate a PRD/brief file name. Only a flat file name with an allowed extension is
+ * permitted — no path separators or traversal sequences — so the value is always safe
+ * to join onto the project's docs directory.
+ */
+const PRD_FILENAME_PATTERN = /^[\w\-. ]+\.(txt|md|json)$/;
+function isValidPrdFileName(fileName) {
+    return typeof fileName === 'string'
+        && PRD_FILENAME_PATTERN.test(fileName)
+        && !fileName.includes('/')
+        && !fileName.includes('\\')
+        && !fileName.includes('..');
+}
+
+/**
  * POST /api/taskmaster/prd/:projectName
  * Create or update a PRD file in the project's .pipeline/docs directory
  */
@@ -1711,7 +1725,7 @@ router.post('/prd/:projectName', async (req, res) => {
         }
 
         // Validate filename
-        if (!fileName.match(/^[\w\-. ]+\.(txt|md|json)$/)) {
+        if (!isValidPrdFileName(fileName)) {
             return res.status(400).json({
                 error: 'Invalid filename',
                 message: 'Filename must end with .txt, .md, or .json and contain only alphanumeric characters, spaces, dots, and dashes'
@@ -1787,7 +1801,12 @@ router.post('/prd/:projectName', async (req, res) => {
 router.get('/prd/:projectName/:fileName', async (req, res) => {
     try {
         const { projectName, fileName } = req.params;
-        
+
+        // Validate filename to prevent path traversal (e.g. ../../etc/passwd)
+        if (!isValidPrdFileName(fileName)) {
+            return res.status(400).json({ error: 'Invalid filename' });
+        }
+
         // Get project path
         let projectPath;
         try {
@@ -1853,7 +1872,12 @@ router.get('/prd/:projectName/:fileName', async (req, res) => {
 router.delete('/prd/:projectName/:fileName', async (req, res) => {
     try {
         const { projectName, fileName } = req.params;
-        
+
+        // Validate filename to prevent path traversal — this endpoint unlinks the file.
+        if (!isValidPrdFileName(fileName)) {
+            return res.status(400).json({ error: 'Invalid filename' });
+        }
+
         // Get project path
         let projectPath;
         try {
@@ -2202,7 +2226,16 @@ router.post('/parse-prd/:projectName', async (req, res) => {
     try {
         const { projectName } = req.params;
         const { fileName = DEFAULT_RESEARCH_BRIEF_FILENAME, numTasks, append = false } = req.body;
-        
+
+        // Validate filename before it is joined onto the docs directory to prevent
+        // path traversal (e.g. ../../../some.json).
+        if (!isValidPrdFileName(fileName) || !fileName.endsWith('.json')) {
+            return res.status(400).json({
+                error: 'Invalid brief format',
+                message: 'Research Brief must be a .json file name without path separators',
+            });
+        }
+
         // Get project path
         let projectPath;
         try {
@@ -2216,7 +2249,7 @@ router.post('/parse-prd/:projectName', async (req, res) => {
 
         const paths = await ensurePipelineInitialized(projectPath);
         const briefPath = path.join(paths.docsDir, fileName);
-        
+
         // Check if brief JSON file exists
         try {
             await fsPromises.access(briefPath, fs.constants.F_OK);
@@ -2224,13 +2257,6 @@ router.post('/parse-prd/:projectName', async (req, res) => {
             return res.status(404).json({
                 error: 'Research Brief file not found',
                 message: `File "${fileName}" does not exist in ${PIPELINE_DIR}/docs/`
-            });
-        }
-
-        if (!fileName.endsWith('.json')) {
-            return res.status(400).json({
-                error: 'Invalid brief format',
-                message: 'Research Brief must be a .json file',
             });
         }
 

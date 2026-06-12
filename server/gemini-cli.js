@@ -1279,6 +1279,13 @@ export async function spawnGemini(command, options = {}, ws) {
     });
     
     geminiProcess.on('close', async (code) => {
+      // Flush any trailing partial line — Gemini's final JSON event (which carries the
+      // assistant message and final token budget) is not guaranteed to end with '\n'.
+      if (leftOver.trim()) {
+        const finalLine = leftOver;
+        leftOver = '';
+        processingQueue = processingQueue.then(() => processLine(finalLine));
+      }
       await processingQueue;
       if (messageBuffer && (capturedSessionId || sessionId || initialKey)) {
         await persistAssistantMessageBuffer(capturedSessionId || sessionId || initialKey, messageBuffer);

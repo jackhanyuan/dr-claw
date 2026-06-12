@@ -275,7 +275,8 @@ router.get('/:id/pdf', async (req, res) => {
     const safeId = ref.id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const pdfPath = path.join(PDF_CACHE_DIR, `${safeId}.pdf`);
     const resolvedPath = path.resolve(pdfPath);
-    if (!resolvedPath.startsWith(path.resolve(PDF_CACHE_DIR))) {
+    const cacheRoot = path.resolve(PDF_CACHE_DIR);
+    if (resolvedPath !== cacheRoot && !resolvedPath.startsWith(cacheRoot + path.sep)) {
       return res.status(400).json({ error: 'Invalid reference ID' });
     }
 
