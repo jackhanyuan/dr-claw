@@ -196,6 +196,10 @@
         "name": "최소",
         "description": "가장 빠른 응답, 최소한의 신중한 추론"
       },
+      "none": {
+        "name": "없음",
+        "description": "추가 추론을 사용하지 않음"
+      },
       "low": {
         "name": "낮음",
         "description": "가벼운 추론, 더 낮은 지연 시간"
@@ -209,6 +213,10 @@
         "description": "어려운 작업에 더 신중한 추론"
       },
       "xhigh": {
+        "name": "매우 높음",
+        "description": "복잡한 작업을 위한 매우 높은 추론 강도"
+      },
+      "max": {
         "name": "최대",
         "description": "최대 추론 강도"
       }

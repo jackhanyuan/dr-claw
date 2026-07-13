@@ -196,6 +196,10 @@
         "name": "Minimal",
         "description": "Fastest response with minimal deliberate reasoning"
       },
+      "none": {
+        "name": "None",
+        "description": "No additional reasoning effort"
+      },
       "low": {
         "name": "Low",
         "description": "Light reasoning with lower latency"
@@ -209,6 +213,10 @@
         "description": "More deliberate reasoning for harder tasks"
       },
       "xhigh": {
+        "name": "Extra High",
+        "description": "Very high reasoning effort for complex tasks"
+      },
+      "max": {
         "name": "Max",
         "description": "Maximum reasoning effort"
       }

@@ -196,6 +196,10 @@
         "name": "极低",
         "description": "最快响应，仅进行最少量的审慎推理"
       },
+      "none": {
+        "name": "无",
+        "description": "不额外投入推理"
+      },
       "low": {
         "name": "低",
         "description": "较轻量推理，延迟更低"
@@ -209,6 +213,10 @@
         "description": "为更难任务投入更多推理"
       },
       "xhigh": {
+        "name": "极高",
+        "description": "为复杂任务投入非常高的推理强度"
+      },
+      "max": {
         "name": "最高",
         "description": "最大推理强度"
       }
