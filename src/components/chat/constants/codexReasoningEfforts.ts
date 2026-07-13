@@ -1,4 +1,4 @@
-import { Brain, Gauge, Zap, Sparkles, Atom, Circle } from 'lucide-react';
+import { Atom, Brain, Circle, CircleOff, Crown, Gauge, Sparkles, Zap } from 'lucide-react';
 
 export const codexReasoningEfforts = [
   {
@@ -13,6 +13,13 @@ export const codexReasoningEfforts = [
     name: 'Minimal',
     description: 'Fastest response with minimal deliberate reasoning',
     icon: Gauge,
+    color: 'text-slate-600',
+  },
+  {
+    id: 'none',
+    name: 'None',
+    description: 'No additional reasoning effort',
+    icon: CircleOff,
     color: 'text-slate-600',
   },
   {
@@ -38,9 +45,16 @@ export const codexReasoningEfforts = [
   },
   {
     id: 'xhigh',
+    name: 'Extra High',
+    description: 'Very high reasoning effort for complex tasks',
+    icon: Atom,
+    color: 'text-orange-600',
+  },
+  {
+    id: 'max',
     name: 'Max',
     description: 'Maximum reasoning effort',
-    icon: Atom,
+    icon: Crown,
     color: 'text-red-600',
   },
 ] as const;

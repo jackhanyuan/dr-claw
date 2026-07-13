@@ -18,7 +18,7 @@ import { TEMP_SESSION_PREFIX, isTemporarySessionId } from '../../../constants/se
 
 import { thinkingModes } from '../constants/thinkingModes';
 import type { CodexReasoningEffortId } from '../constants/codexReasoningEfforts';
-import { getSupportedCodexReasoningEfforts } from '../constants/codexReasoningSupport';
+import { normalizeCodexReasoningEffort } from '../constants/codexReasoningSupport';
 import type { GeminiThinkingModeId } from '../../../../shared/geminiThinkingSupport';
 import { getSupportedGeminiThinkingModes } from '../../../../shared/geminiThinkingSupport';
 
@@ -289,10 +289,12 @@ export function useChatComposerState({
     const savedValue = safeLocalStorage.getItem('codex-reasoning-effort');
     switch (savedValue) {
       case 'minimal':
+      case 'none':
       case 'low':
       case 'medium':
       case 'high':
       case 'xhigh':
+      case 'max':
       case 'default':
         return savedValue;
       default:
@@ -383,9 +385,9 @@ export function useChatComposerState({
   }, [geminiThinkingMode]);
 
   useEffect(() => {
-    const supportedEfforts = getSupportedCodexReasoningEfforts(codexModel);
-    if (!supportedEfforts.includes(codexReasoningEffort)) {
-      setCodexReasoningEffort('default');
+    const normalizedEffort = normalizeCodexReasoningEffort(codexModel, codexReasoningEffort);
+    if (normalizedEffort !== codexReasoningEffort) {
+      setCodexReasoningEffort(normalizedEffort);
     }
   }, [codexModel, codexReasoningEffort]);
 
