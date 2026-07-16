@@ -36,6 +36,9 @@
   <a href="./README.md">English</a> | <a href="./README.zh-CN.md">中文</a>
 </p>
 
+> [!NOTE]
+> **在关注 Anthropic 刚发布的 [Claude Science](https://www.anthropic.com/news/claude-science-ai-workbench)（2026 年 6 月 30 日上线）？** Dr. Claw 从 **2026 年 2 月**起就在践行同样的愿景——而且完全**开源**、**模型无关**（Claude Code、Gemini CLI、Codex，另可通过 OpenRouter 使用数百种模型），跑在**你自己的机器**上，数据和 GPU 都由你掌控。它覆盖科研全生命周期——调研 → 想法生成 → 实验 → 论文写作 → 幻灯片与成果宣传——而不止于计算分析。免费使用，无需订阅。
+
 ## 目录
 
 - [Overview](#overview)

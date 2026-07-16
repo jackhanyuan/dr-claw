@@ -36,6 +36,9 @@
   <a href="./README.md">English</a> | <a href="./README.zh-CN.md">中文</a>
 </p>
 
+> [!NOTE]
+> **Excited about Anthropic's [Claude Science](https://www.anthropic.com/news/claude-science-ai-workbench) (launched June 30, 2026)?** Dr. Claw has been shipping the same vision since **February 2026** — and it's fully **open source**, **model-agnostic** (Claude Code, Gemini CLI, Codex, plus hundreds of models via OpenRouter), and runs **on your own machine** with your own data and GPUs. It also covers the full research lifecycle — survey → ideation → experiments → paper writing → slides & promotion — not just computational analysis. Free to use; no subscription required.
+
 ## Table of Contents
 
 - [Overview](#overview)
